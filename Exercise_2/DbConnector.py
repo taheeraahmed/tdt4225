@@ -17,12 +17,11 @@ class DbConnector:
     def __init__(self,
                  HOST="tdt4225-11.idi.ntnu.no",
                  DATABASE="db_name",
-                 USER="YOUR_USERNAME_HERE",
-                 PASSWORD="YOUR_PASSWORD_IN_PLAIN_TEXT_HERE"):
+                 USER="GROUP_11",
+                 PASSWORD="GROUP_ELEVEN"):
         # Connect to the database
         try:
             self.db_connection = mysql.connect(host=HOST, database=DATABASE, user=USER, password=PASSWORD, port=3306)
-            print(selb.db_connection)
         except Exception as e:
             print("ERROR: Failed to connect to db:", e)
 
