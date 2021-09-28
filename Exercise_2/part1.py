@@ -9,11 +9,11 @@ import os
 
 if __name__ == "__main__":
 
-        main_path = "dataset/dataset/Data"
+        relative_dataset_path = "dataset/dataset/Data"
 
         # create a set and insert every user id that has labels
         user_has_labels = set()
-        with open(main_path + "/../labeled_ids.txt") as file:
+        with open(relative_dataset_path + "/../labeled_ids.txt") as file:
             for line in file:
                 user_id = line.strip()
                 user_has_labels.add(user_id)
@@ -24,7 +24,7 @@ if __name__ == "__main__":
         db_connection = connection.db_connection
         cursor = connection.cursor
 
-        # first step: delete all tables again
+        # we drop all tables to achieve deterministic behaviour for every execution of our program
         query = "DROP TABLE TrackPoint;"
         cursor.execute(query)
         db_connection.commit()
@@ -73,27 +73,24 @@ if __name__ == "__main__":
 
 
         # iterate over all users
-        for user_id in os.listdir(main_path):
+        for user_id in os.listdir(relative_dataset_path):
 
             # set to 1 if True, 0 else
             has_labels = 1 if user_id in user_has_labels else 0
 
-
             # create user in database
-            query = "INSERT INTO User (id, has_labels) VALUES ({}, {});".format(user_id, has_labels)
+            query = "INSERT INTO User (id, has_labels) VALUES ('{}', {});".format(user_id, has_labels)
             cursor.execute(query)
             db_connection.commit()
 
             # iterate over every user's activity
-            for activity_filename in os.listdir("{}/{}/Trajectory/".format(main_path, user_id)):
+            for activity_filename in os.listdir("{}/{}/Trajectory/".format(relative_dataset_path, user_id)):
                 
-                activity_id = activity_filename.split(".")[0]
-
                 # TODO
                 transportation_mode = "car"
 
                 # open the activity file once, just to extract first and last date
-                with open("{}/{}/Trajectory/{}".format(main_path, user_id, activity_filename)) as activity_file:
+                with open("{}/{}/Trajectory/{}".format(relative_dataset_path, user_id, activity_filename)) as activity_file:
                     lines = activity_file.readlines()
                     start_date_time = lines[6].strip().split(",")[-2] + " " + lines[6].strip().split(",")[-1]
                     end_date_time = lines[-1].strip().split(",")[-2] + " " + lines[-1].strip().split(",")[-1]
@@ -102,39 +99,52 @@ if __name__ == "__main__":
 
                 # insert activity into database
                 query = """INSERT INTO 
-                Activity (id, user_id, transportation_mode, start_date_time, end_date_time) 
-                VALUES ({}, {}, {}, {}, {});""".format(int(activity_id), user_id, transportation_mode, start_date_time, end_date_time)
-
-                print(query)
-
+                Activity (user_id, transportation_mode, start_date_time, end_date_time) 
+                VALUES ({}, '{}', '{}', '{}');""".format(user_id, transportation_mode, start_date_time, end_date_time)
                 cursor.execute(query)
                 db_connection.commit()
 
+                # since mysql creates IDs itself (auto-increment) we have to query for this activity's ID
+                activity_id = cursor.lastrowid
 
 
-                with open("{}/{}/Trajectory/{}".format(main_path, user_id, activity_filename)) as activity_file:
+                with open("{}/{}/Trajectory/{}".format(relative_dataset_path, user_id, activity_filename)) as activity_file:
                     
                     # skip the first 7 lines
                     for _ in range(7):
                         next(activity_file)
 
+                    # datapoints list for executemany()
+                    datapoints = []
+
                     # iterate over all track points
                     for i, line in enumerate(activity_file):
                         latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
+                        
+                        # casting columns
+                        latitude = float(latitude)
+                        longitude = float(longitude)
+                        altitude = int(float(altitude))
+                        date_days = float(date_days)
+                        date_time = "{} {}".format(date_str, time_str)
 
-                        # we are just trying to create a unique id here :)
-                        trackpoint_id = "{}{}{}".format(user_id, activity_filename, i)
+                        # building it back to a tuple for executemany()
+                        datapoints.append((activity_id, latitude, longitude, altitude, date_days, date_time))
 
-                        # create activity in database
-                        query = """INSERT INTO TrackPoint (id, activity_id, lat, lon, altitude, date_days, date_time) 
-                        VALUES ({}, {}, {}, {}, {}, {}, {});""".format(trackpoint_id, activity_filename, float(latitude), float(longitude), int(altitude), float(date_days), date_str)
-
-                        cursor.execute(query)
-                        db_connection.commit()
+                    if len(datapoints) > 2506:
+                        print("User={}, Activity={} has {} TrackPoints: skipping!".format(user_id, activity_filename, len(datapoints)))
+                        continue
 
 
+                    # else we continue with insertion into database
+                    # create activity in database
+                    query = "INSERT INTO TrackPoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s, %s, %s, %s, %s, %s);"
 
-                    exit()
+                    # mass insert all datapoints (TrackPoint) at once
+                    cursor.executemany(query, datapoints)
+                    db_connection.commit()
+                    
+
 
 
 
