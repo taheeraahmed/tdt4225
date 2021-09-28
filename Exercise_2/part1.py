@@ -3,6 +3,8 @@ from typing import DefaultDict
 from DbConnector import DbConnector
 from tabulate import tabulate
 import os
+import mysql
+import traceback
 
 
 
@@ -85,7 +87,8 @@ if __name__ == "__main__":
 
             # iterate over every user's activity
             for activity_filename in os.listdir("{}/{}/Trajectory/".format(relative_dataset_path, user_id)):
-                
+                print("User={},Activity={} ".format(user_id, activity_filename), end='')
+
                 # TODO
                 transportation_mode = "car"
 
@@ -101,8 +104,13 @@ if __name__ == "__main__":
                 query = """INSERT INTO 
                 Activity (user_id, transportation_mode, start_date_time, end_date_time) 
                 VALUES ({}, '{}', '{}', '{}');""".format(user_id, transportation_mode, start_date_time, end_date_time)
-                cursor.execute(query)
-                db_connection.commit()
+
+                try:
+                    cursor.execute(query)
+                    db_connection.commit()
+                except Exception:
+                    print(traceback.print_exc())
+
 
                 # since mysql creates IDs itself (auto-increment) we have to query for this activity's ID
                 activity_id = cursor.lastrowid
@@ -132,7 +140,7 @@ if __name__ == "__main__":
                         datapoints.append((activity_id, latitude, longitude, altitude, date_days, date_time))
 
                     if len(datapoints) > 2506:
-                        print("User={}, Activity={} has {} TrackPoints: skipping!".format(user_id, activity_filename, len(datapoints)))
+                        print("has {} TrackPoints: skipping!".format(len(datapoints)))
                         continue
 
 
@@ -140,9 +148,14 @@ if __name__ == "__main__":
                     # create activity in database
                     query = "INSERT INTO TrackPoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s, %s, %s, %s, %s, %s);"
 
-                    # mass insert all datapoints (TrackPoint) at once
-                    cursor.executemany(query, datapoints)
-                    db_connection.commit()
+                    try:
+                        # mass insert all datapoints (TrackPoint) at once
+                        cursor.executemany(query, datapoints)
+                        db_connection.commit()
+                    except Exception:
+                        print(traceback.print_exc())
+
+                    print("done")
                     
 
 
