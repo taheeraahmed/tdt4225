@@ -85,12 +85,30 @@ if __name__ == "__main__":
             cursor.execute(query)
             db_connection.commit()
 
+            # create a dict for the transportation mode
+            transportation_mode = dict()
+
+            try:
+                labels_file = open("{}/{}/labels.txt".format(relative_dataset_path, user_id, activity_filename))
+
+                # skip the first line
+                next(labels_file)
+
+                for line in labels_file.readlines():
+                    date_time_start, date_time_end, transportation = line.strip().split("\t")
+                    transportation_mode["{} - {}".format(date_time_start, date_time_end)] = transportation
+
+            except FileNotFoundError:
+                # no labels file -> just continue with empty dict
+                pass
+
+            print(transportation_mode)
+
+
             # iterate over every user's activity
             for activity_filename in os.listdir("{}/{}/Trajectory/".format(relative_dataset_path, user_id)):
                 print("User={},Activity={} ".format(user_id, activity_filename), end='')
 
-                # TODO
-                transportation_mode = "car"
 
                 # open the activity file once, just to extract first and last date
                 with open("{}/{}/Trajectory/{}".format(relative_dataset_path, user_id, activity_filename)) as activity_file:
