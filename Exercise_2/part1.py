@@ -74,7 +74,7 @@ if __name__ == "__main__":
         db_connection.commit()
 
 
-        # iterate over all users
+        # LOOP: iterate over all users
         for user_id in os.listdir(relative_dataset_path):
 
             # set to 1 if True, 0 else
@@ -85,30 +85,29 @@ if __name__ == "__main__":
             cursor.execute(query)
             db_connection.commit()
 
-            # create a dict for the transportation mode
-            transportation_mode = dict()
 
-            try:
-                labels_file = open("{}/{}/labels.txt".format(relative_dataset_path, user_id, activity_filename))
+
+            # for each user we try to read the labels.txt file and (if existing) create a dict with start_date_time and end_date_time as key and the transportation mode as value
+            # if the file does not exist, the dict stays empty (same as always mismatching date_times)
+            # create a dict for the transportation mode
+            transportation_mode_dict = dict()
+            if user_id in user_has_labels:
+                labels_file = open("{}/{}/labels.txt".format(relative_dataset_path, user_id))
 
                 # skip the first line
                 next(labels_file)
 
                 for line in labels_file.readlines():
-                    date_time_start, date_time_end, transportation = line.strip().split("\t")
-                    transportation_mode["{} - {}".format(date_time_start, date_time_end)] = transportation
-
-            except FileNotFoundError:
-                # no labels file -> just continue with empty dict
-                pass
-
-            print(transportation_mode)
+                    start_date_time, end_date_time, transportation = line.strip().split("\t")
+                    transportation_mode_dict["{} - {}".format(start_date_time, end_date_time)] = transportation
 
 
-            # iterate over every user's activity
+            #print(transportation_mode_dict)
+
+
+            # LOOP: iterate over every user's activity file
             for activity_filename in os.listdir("{}/{}/Trajectory/".format(relative_dataset_path, user_id)):
                 print("User={},Activity={} ".format(user_id, activity_filename), end='')
-
 
                 # open the activity file once, just to extract first and last date
                 with open("{}/{}/Trajectory/{}".format(relative_dataset_path, user_id, activity_filename)) as activity_file:
@@ -116,9 +115,15 @@ if __name__ == "__main__":
                     start_date_time = lines[6].strip().split(",")[-2] + " " + lines[6].strip().split(",")[-1]
                     end_date_time = lines[-1].strip().split(",")[-2] + " " + lines[-1].strip().split(",")[-1]
 
+                transportation_mode = str()
+                if user_id in user_has_labels:
+                    # now use the extracted dates to search in transportation_mode labels
+                    if "{} - {}".format(start_date_time, end_date_time) in transportation_mode_dict:
+                        transportation_mode = transportation_mode_dict["{} - {}".format(start_date_time, end_date_time)]
+                        print("matched transportation_mode: key={},value={}".format("{} - {}".format(start_date_time, end_date_time), transportation_mode))
 
 
-                # insert activity into database
+                # insert activity into database (requires to reference user)
                 query = """INSERT INTO 
                 Activity (user_id, transportation_mode, start_date_time, end_date_time) 
                 VALUES ({}, '{}', '{}', '{}');""".format(user_id, transportation_mode, start_date_time, end_date_time)
@@ -127,11 +132,13 @@ if __name__ == "__main__":
                     cursor.execute(query)
                     db_connection.commit()
                 except Exception:
+                    print("catched this..")
                     print(traceback.print_exc())
 
 
                 # since mysql creates IDs itself (auto-increment) we have to query for this activity's ID
                 activity_id = cursor.lastrowid
+
 
 
                 with open("{}/{}/Trajectory/{}".format(relative_dataset_path, user_id, activity_filename)) as activity_file:
@@ -143,19 +150,12 @@ if __name__ == "__main__":
                     # datapoints list for executemany()
                     datapoints = []
 
-                    # iterate over all track points
+                    # LOOP: iterate over all track points
                     for i, line in enumerate(activity_file):
                         latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
                         
-                        # casting columns
-                        latitude = float(latitude)
-                        longitude = float(longitude)
-                        altitude = int(float(altitude))
-                        date_days = float(date_days)
-                        date_time = "{} {}".format(date_str, time_str)
-
-                        # building it back to a tuple for executemany()
-                        datapoints.append((activity_id, latitude, longitude, altitude, date_days, date_time))
+                        # cast and building it back to a tuple for executemany()
+                        datapoints.append((activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)))
 
                     if len(datapoints) > 2506:
                         print("has {} TrackPoints: skipping!".format(len(datapoints)))
