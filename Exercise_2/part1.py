@@ -85,8 +85,6 @@ if __name__ == "__main__":
             cursor.execute(query)
             db_connection.commit()
 
-
-
             # for each user we try to read the labels.txt file and (if existing) create a dict with start_date_time and end_date_time as key and the transportation mode as value
             # if the file does not exist, the dict stays empty (same as always mismatching date_times)
             # create a dict for the transportation mode
@@ -100,9 +98,6 @@ if __name__ == "__main__":
                 for line in labels_file.readlines():
                     start_date_time, end_date_time, transportation = line.strip().split("\t")
                     transportation_mode_dict["{} - {}".format(start_date_time, end_date_time)] = transportation
-
-
-            #print(transportation_mode_dict)
 
 
             # LOOP: iterate over every user's activity file
@@ -126,19 +121,16 @@ if __name__ == "__main__":
                 # insert activity into database (requires to reference user)
                 query = """INSERT INTO 
                 Activity (user_id, transportation_mode, start_date_time, end_date_time) 
-                VALUES ({}, '{}', '{}', '{}');""".format(user_id, transportation_mode, start_date_time, end_date_time)
+                VALUES ('{}', '{}', '{}', '{}');""".format(user_id, transportation_mode, start_date_time, end_date_time)
 
                 try:
                     cursor.execute(query)
                     db_connection.commit()
                 except Exception:
-                    print("catched this..")
                     print(traceback.print_exc())
-
 
                 # since mysql creates IDs itself (auto-increment) we have to query for this activity's ID
                 activity_id = cursor.lastrowid
-
 
 
                 with open("{}/{}/Trajectory/{}".format(relative_dataset_path, user_id, activity_filename)) as activity_file:
@@ -175,14 +167,3 @@ if __name__ == "__main__":
 
                     print("done")
                     
-
-
-
-
-
-
-
-
-
-
-                # print("User: {}, activity: {}".format(user_id, activity_id))
