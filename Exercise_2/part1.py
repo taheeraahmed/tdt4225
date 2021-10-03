@@ -97,8 +97,7 @@ if __name__ == "__main__":
 
                 for line in labels_file.readlines():
                     start_date_time, end_date_time, transportation = line.strip().split("\t")
-                    transportation_mode_dict["{} - {}".format(start_date_time, end_date_time)] = transportation
-
+                    transportation_mode_dict["{} - {}".format(start_date_time.replace("/", "-"), end_date_time.replace("/", "-"))] = transportation
 
             # LOOP: iterate over every user's activity file
             for activity_filename in os.listdir("{}/{}/Trajectory/".format(relative_dataset_path, user_id)):
