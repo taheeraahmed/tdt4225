@@ -110,7 +110,7 @@ if __name__ == "__main__":
                     start_date_time = lines[6].strip().split(",")[-2] + " " + lines[6].strip().split(",")[-1]
                     end_date_time = lines[-1].strip().split(",")[-2] + " " + lines[-1].strip().split(",")[-1]
 
-                transportation_mode = str()
+                transportation_mode = None
                 if user_id in user_has_labels:
                     # now use the extracted dates to search in transportation_mode labels
                     if "{} - {}".format(start_date_time, end_date_time) in transportation_mode_dict:
