@@ -7,7 +7,6 @@ import mysql
 import traceback
 
 # TOOD: Transportation mode has to be NULL in case there is no labels
-# TODO: Foreign key cascade rules
 
 
 if __name__ == "__main__":
@@ -53,7 +52,7 @@ if __name__ == "__main__":
             transportation_mode VARCHAR(100),
             start_date_time DATETIME NOT NULL,
             end_date_time DATETIME NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES User(id)
+            FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE
             )
         """
         cursor.execute(query)
@@ -68,7 +67,7 @@ if __name__ == "__main__":
             altitude INT NOT NULL,
             date_days DOUBLE NOT NULL,
             date_time DATETIME NOT NULL,
-            FOREIGN KEY (activity_id) REFERENCES Activity(id)
+            FOREIGN KEY (activity_id) REFERENCES Activity(id) ON DELETE CASCADE
             )
         """
         cursor.execute(query)
