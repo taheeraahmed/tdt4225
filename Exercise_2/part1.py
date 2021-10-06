@@ -6,7 +6,8 @@ import os
 import mysql
 import traceback
 
-
+# TOOD: Transportation mode has to be NULL in case there is no labels
+# TODO: Foreign key cascade rules
 
 
 if __name__ == "__main__":
