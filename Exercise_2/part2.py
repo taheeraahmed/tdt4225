@@ -29,22 +29,23 @@ class Queries:
     self.cursor.execute(query_trackpoint)
     res_trackpoint = self.cursor.fetchall()
 
-    print('Query 1: query_user={}, query_trackpoint={}, query_activity={}'.format(res_user, res_activity, res_trackpoint))
+    print('Query 1: number of users: {}, number of activities: {}, number of trackpoints: {}'.format(res_user[0][0], res_activity[0][0], res_trackpoint[0][0]))
     self.new_task_line()
   
   def q2(self):
-    # TODO: Send mail to stud.ass WHAT DOES IT MEEAN? PER USER?? Check if this is the correct interpretation
     query = """
-      SELECT MAX(user_id), MIN(user_id), AVG(user_id) 
-      GROUP BY user_id 
-      FROM Activity;
-    """ 
+      SELECT AVG(count), MIN(count), MAX(count)
+      FROM (
+        select user_id, count(*) AS count
+        from Activity 
+        group by user_id 
+      ) AS intermediate
+    """
 
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 2')
-    # TODO: Print query answer
+    print('Query 2: AVG: {}, MIN: {}, MAX: {}'.format(res[0][0], res[0][1], res[0][2]))
     self.new_task_line()
   
   def q3(self):
@@ -53,26 +54,30 @@ class Queries:
       FROM Activity
       GROUP BY user_id 
       ORDER BY count DESC
-      LIMIT 10;
+      LIMIT 10
     """
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 3: res={}'.format(res))
-    # TODO: Print query answer
+    print('Query 3')
+    for rank, row in enumerate(res):
+      print("Rank {}: user_id: {}, #activities: {}".format(rank+1, row[0], row[1]))
+
     self.new_task_line()
   
   def q4(self): 
     query = """
-      SELECT DISTINCT(user_id) 
+      SELECT COUNT(*) as count
       FROM Activity 
-      WHERE DATEDIFF(end_date_time, start_date_time) = 1;
+      WHERE DATEDIFF(end_date_time, start_date_time) = 1
     """
 
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 4: res={}'.format(res))
+    print('Query 4: Number of users: {}'.format(res[0][0]))
+
+
     self.new_task_line()
 
   def q5(self):
@@ -80,14 +85,15 @@ class Queries:
       SELECT GROUP_CONCAT(id), COUNT(*) AS count 
       FROM Activity 
       GROUP BY user_id, start_date_time, end_date_time 
-      HAVING count > 1;
+      HAVING count > 1
     """
 
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 5: res={}'.format(res))
-    # TODO: Print query answer
+    print('Query 5')
+    for row in res:
+      print("activity_id: {}".format(row[0]))
     self.new_task_line()
 
   def q6(self): 
@@ -150,7 +156,10 @@ class Queries:
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 7: res: {}'.format(res))
+    print('Query 7')
+    for row in res:
+      print('user_id: {}'.format(row[0]))
+
     self.new_task_line()
 
   def q8(self):
@@ -159,14 +168,15 @@ class Queries:
     query = """
       SELECT COUNT(DISTINCT user_id), transportation_mode 
       FROM Activity 
-      WHERE transportation_mode != '' 
-      GROUP BY transportation_mode;
+      WHERE transportation_mode IS NOT NULL
+      GROUP BY transportation_mode
     """
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 8: {}'.format(res))
-    # TODO: Print query answer
+    print('Query 8')
+    for row in res:
+      print('transportation_mode: {}, # destinct users: {}'.format(row[1], row[0]))
     self.new_task_line()
 
   def q9(self):
@@ -175,7 +185,7 @@ class Queries:
       FROM Activity 
       GROUP BY year, month 
       ORDER BY count DESC 
-      LIMIT 1;
+      LIMIT 1
     """
 
     self.cursor.execute(query)
@@ -183,24 +193,26 @@ class Queries:
 
     print('Query 9a: Year: {} Month: {} #Activities: {}'.format(res[0][1], res[0][2], res[0][0]))
 
-
-
-    # TODO: hier müssen wir nochmal ran: Wir müssen ausrechnen, wie viel Zeit 
-    # der User mit Aktivitäten verbringt, nicht wie viele Aktivitäten es insgesamt gibt
-
+    # for this query we explicitly use the intermediate result from query 9a
     query = """
-      SELECT COUNT(*) as count, user_id 
+      SELECT user_id, COUNT(*) AS n_activities, SUM(end_date_time - start_date_time) / 3600000 AS recorded_hours 
       FROM Activity 
       WHERE YEAR(start_date_time) = '2008' AND MONTH(start_date_time) = '11' 
       GROUP BY user_id 
-      ORDER BY count DESC 
-      LIMIT 1
+      ORDER BY n_activities DESC
+      LIMIT 2;
     """
 
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 9b: {}'.format(res))
+    print('Query 9b: user_id with the most activity: {}, n_activities: {}, recorded hours: {}\n\tuser_id with the seconds most activity: {}, n_activities: {}, recorded hours: {}'.format(
+      res[0][0], res[0][1], res[0][2], res[1][0], res[1][1], res[1][2])
+    )
+
+    second_user_has_recorded_hours = res[0][2] > res[1][2]
+    print('User with most activities has more recorded hours than user with second most activities: {}'.format(second_user_has_recorded_hours))
+
     self.new_task_line()
 
   def q10(self):
@@ -208,7 +220,7 @@ class Queries:
       SELECT Activity.id, TrackPoint.lat, TrackPoint.lon 
       FROM Activity 
       INNER JOIN TrackPoint ON Activity.id = TrackPoint.activity_id 
-      WHERE user_id = '112' AND transportation_mode ='walk' AND YEAR(TrackPoint.date_time) = '2008';
+      WHERE user_id = '112' AND transportation_mode = 'walk' AND YEAR(TrackPoint.date_time) = '2008'
     """
     self.cursor.execute(query)
     res = self.cursor.fetchall()
@@ -222,7 +234,6 @@ class Queries:
     total_distance = 0
 
     for activity_id, coordinates in trackpoints_per_activity.items():
-      activity_distance = 0
 
       # start with the first trackingpoint as current
       previous_coordinate = coordinates.pop(0)
@@ -231,7 +242,7 @@ class Queries:
       for current_coordinate in coordinates:
         total_distance += haversine(previous_coordinate, current_coordinate)
 
-    print('Query 10: distance:{}'.format(total_distance))
+    print('Query 10: total distance:{}'.format(total_distance))
     self.new_task_line()
 
   def q11(self):
@@ -266,7 +277,7 @@ class Queries:
         # for every next altitude calculate diff to previous
         for current_altitude in altitudes:
 
-          print("user_id={},activity_id={},altitude={}".format(user_id, activity_id, current_altitude))
+          # print("user_id={},activity_id={},altitude={}".format(user_id, activity_id, current_altitude))
 
           # check if altitude is valid..
           if current_altitude != -777 and current_altitude > previous_altitude:
@@ -282,7 +293,7 @@ class Queries:
 
     print('Query 11: \n')
     
-    for rank, user_id, gained_altitude in enumerate(gained_altitude_per_user_id):
+    for rank, user_id, gained_altitude in enumerate(gained_altitude_per_user_id_ranks):
       print("Rank {}: user_id: {}, gained altitude: {}".format(rank + 1, user_id, gained_altitude))
 
     self.new_task_line()
@@ -340,17 +351,17 @@ class Queries:
     print("\n" + "---------------------" + "\n")
 
   def main(self):
-    # self.q1()
-    # self.q2()
-    # self.q3()
-    # self.q4()
-    # self.q5()
+    self.q1()
+    self.q2()
+    self.q3()
+    self.q4()
+    self.q5()
     # self.q6()
-    # self.q7()
-    # self.q8()
-    # self.q9()
-    # self.q10()
-    # self.q11()
+    self.q7()
+    self.q8()
+    self.q9()
+    self.q10()
+    self.q11()
     self.q12()
 
 

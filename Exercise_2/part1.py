@@ -50,7 +50,7 @@ if __name__ == "__main__":
         query = """CREATE TABLE IF NOT EXISTS Activity (
             id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
             user_id VARCHAR(100) NOT NULL,
-            transportation_mode VARCHAR(100) NOT NULL,
+            transportation_mode VARCHAR(100),
             start_date_time DATETIME NOT NULL,
             end_date_time DATETIME NOT NULL,
             FOREIGN KEY (user_id) REFERENCES User(id)
