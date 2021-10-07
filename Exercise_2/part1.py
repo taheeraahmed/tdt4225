@@ -118,9 +118,18 @@ if __name__ == "__main__":
 
 
                 # insert activity into database (requires to reference user)
-                query = """INSERT INTO 
-                Activity (user_id, transportation_mode, start_date_time, end_date_time) 
-                VALUES ('{}', '{}', '{}', '{}');""".format(user_id, transportation_mode, start_date_time, end_date_time)
+                if transportation_mode:
+                    query = """
+                        INSERT INTO Activity (user_id, transportation_mode, start_date_time, end_date_time) 
+                        VALUES ('{}', '{}', '{}', '{}');
+                    """.format(user_id, transportation_mode, start_date_time, end_date_time)
+                else:
+                    # if transportation_mode is None don't insert it (will be set to NULL inside MySQL)
+                    query = """
+                        INSERT INTO Activity (user_id, start_date_time, end_date_time) 
+                        VALUES ('{}', '{}', '{}');
+                    """.format(user_id, start_date_time, end_date_time)
+
 
                 try:
                     cursor.execute(query)

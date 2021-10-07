@@ -289,11 +289,12 @@ class Queries:
       # print("user_id={}, gained_altitude={}".format(user_id, user_gained_altitude_sum))
 
     # sort list
-    gained_altitude_per_user_id_ranks = sorted(gained_altitude_per_user_id, key=lambda tup: tup[1])[-20:].reverse()
+    gained_altitude_per_user_id_ranks = sorted(gained_altitude_per_user_id, key=lambda tup: tup[1])[-20:]
+    gained_altitude_per_user_id_ranks.reverse()
 
     print('Query 11: \n')
     
-    for rank, user_id, gained_altitude in enumerate(gained_altitude_per_user_id_ranks):
+    for rank, (user_id, gained_altitude) in enumerate(gained_altitude_per_user_id_ranks):
       print("Rank {}: user_id: {}, gained altitude: {}".format(rank + 1, user_id, gained_altitude))
 
     self.new_task_line()
@@ -343,7 +344,7 @@ class Queries:
 
     print('Query 12:')
     
-    for user_id, n_invalid_activities in users_with_invalid_activities.iter():
+    for user_id, n_invalid_activities in users_with_invalid_activities.items():
       print('user_id: {}, number of invalid activities: {}'.format(user_id, n_invalid_activities))
     self.new_task_line()
 
@@ -351,17 +352,17 @@ class Queries:
     print("\n" + "---------------------" + "\n")
 
   def main(self):
-    self.q1()
-    self.q2()
-    self.q3()
-    self.q4()
-    self.q5()
+    # self.q1()
+    # self.q2()
+    # self.q3()
+    # self.q4()
+    # self.q5()
     # self.q6()
-    self.q7()
-    self.q8()
-    self.q9()
-    self.q10()
-    self.q11()
+    # self.q7()
+    # self.q8()
+    # self.q9()
+    # self.q10()
+    # self.q11()
     self.q12()
 
 
