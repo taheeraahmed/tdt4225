@@ -167,9 +167,10 @@ class Queries:
 
     self.heading(7)
 
+    print("The following users have never taken a taxi: ")
     for row in res:
-      print('user_id: {}'.format(row[0]))
-    print('There are {} users who have never taken a taxi'.format(len(res)))
+      print('{}, '.format(row[0]), end="")
+    print('\nThere are {} users who have never taken a taxi'.format(len(res)))
     
     self.new_task_line()
 
@@ -350,8 +351,8 @@ class Queries:
 
     self.heading(12)
     
-    for user_id, n_invalid_activities in users_with_invalid_activities.iter():
-      print('User ID: {} \n #No. of invalid activities: {}'.format(user_id, n_invalid_activities))
+    for user_id, n_invalid_activities in users_with_invalid_activities.items():
+      print('user_id={},#invalid_activities={}'.format(user_id, n_invalid_activities), end=" - ")
     self.new_task_line()
 
   def new_task_line(self):
@@ -373,8 +374,8 @@ class Queries:
     # self.q8()
     # self.q9()
     # self.q10()
-    self.q11()
-    # self.q12()
+    # self.q11()
+    self.q12()
 
 
 if __name__ == "__main__":
