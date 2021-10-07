@@ -8,7 +8,6 @@ import traceback
 
 # TOOD: Transportation mode has to be NULL in case there is no labels
 
-
 if __name__ == "__main__":
 
         relative_dataset_path = "dataset/dataset/Data"
