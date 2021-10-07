@@ -1,6 +1,7 @@
 from DbConnector import DbConnector
 from haversine import haversine
 from tabulate import tabulate
+import pyfiglet
 
 class Queries: 
   def __init__(self):
@@ -29,7 +30,8 @@ class Queries:
     self.cursor.execute(query_trackpoint)
     res_trackpoint = self.cursor.fetchall()
 
-    print('Query 1: number of users: {}, number of activities: {}, number of trackpoints: {}'.format(res_user[0][0], res_activity[0][0], res_trackpoint[0][0]))
+    self.heading(1)
+    print('#No. of users: {} \n#No. of activities: {} \n#No of trackpoints: {}'.format(res_user[0][0], res_activity[0][0], res_trackpoint[0][0]))
     self.new_task_line()
   
   def q2(self):
@@ -44,8 +46,9 @@ class Queries:
 
     self.cursor.execute(query)
     res = self.cursor.fetchall()
-
-    print('Query 2: AVG: {}, MIN: {}, MAX: {}'.format(res[0][0], res[0][1], res[0][2]))
+    
+    self.heading(2)
+    print('Average: {} \nMinimum: {} \nMax: {}'.format(res[0][0], res[0][1], res[0][2]))
     self.new_task_line()
   
   def q3(self):
@@ -59,9 +62,9 @@ class Queries:
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 3')
+    self.heading(3)
     for rank, row in enumerate(res):
-      print("Rank {}: user_id: {}, #activities: {}".format(rank+1, row[0], row[1]))
+      print("Rank {}: user_id: {} #No. activities: {}".format(rank+1, row[0], row[1]))
 
     self.new_task_line()
   
@@ -74,9 +77,9 @@ class Queries:
 
     self.cursor.execute(query)
     res = self.cursor.fetchall()
-
-    print('Query 4: Number of users: {}'.format(res[0][0]))
-
+    
+    self.heading(4)
+    print('#No. of users: {}'.format(res[0][0]))
 
     self.new_task_line()
 
@@ -91,9 +94,15 @@ class Queries:
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 5')
-    for row in res:
-      print("activity_id: {}".format(row[0]))
+    self.heading(5)
+
+
+    if not res:
+      print('There are no rows in the activity table which matches this query')
+    else: 
+      for row in res:
+        print("activity_id: {}".format(row[0]))
+
     self.new_task_line()
 
   def q6(self): 
@@ -156,15 +165,15 @@ class Queries:
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 7')
+    self.heading(7)
+
     for row in res:
       print('user_id: {}'.format(row[0]))
-
+    print('There are {} users who have never taken a taxi'.format(len(res)))
+    
     self.new_task_line()
 
   def q8(self):
-    # TODO: 
-
     query = """
       SELECT COUNT(DISTINCT user_id), transportation_mode 
       FROM Activity 
@@ -174,9 +183,9 @@ class Queries:
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 8')
+    self.heading(8)
     for row in res:
-      print('transportation_mode: {}, # destinct users: {}'.format(row[1], row[0]))
+      print('Transportation mode: {}  #No. distinct users: {}'.format(row[1], row[0]))
     self.new_task_line()
 
   def q9(self):
@@ -191,7 +200,9 @@ class Queries:
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 9a: Year: {} Month: {} #Activities: {}'.format(res[0][1], res[0][2], res[0][0]))
+    self.heading(9)
+
+    print('a: Year: {} Month: {} #No. Activities: {}'.format(res[0][1], res[0][2], res[0][0]))
 
     # for this query we explicitly use the intermediate result from query 9a
     query = """
@@ -206,12 +217,12 @@ class Queries:
     self.cursor.execute(query)
     res = self.cursor.fetchall()
 
-    print('Query 9b: user_id with the most activity: {}, n_activities: {}, recorded hours: {}\n\tuser_id with the seconds most activity: {}, n_activities: {}, recorded hours: {}'.format(
+    print('\nb: user_id with the most activity: {}, n_activities: {}, recorded hours: {}\n   user_id with the seconds most activity: {}, n_activities: {}, recorded hours: {}'.format(
       res[0][0], res[0][1], res[0][2], res[1][0], res[1][1], res[1][2])
     )
 
     second_user_has_recorded_hours = res[0][2] > res[1][2]
-    print('User with most activities has more recorded hours than user with second most activities: {}'.format(second_user_has_recorded_hours))
+    print('\nUser with most activities has more recorded hours than user with second most activities: {}'.format(second_user_has_recorded_hours))
 
     self.new_task_line()
 
@@ -241,13 +252,11 @@ class Queries:
       # calculate the distance for every previous to every current trackpoint and add this distance to the counter
       for current_coordinate in coordinates:
         total_distance += haversine(previous_coordinate, current_coordinate)
-
-    print('Query 10: total distance:{}'.format(total_distance))
+    self.heading(10)
+    print('Total distance walked by user 112 in 2008 was {} km '.format(total_distance))
     self.new_task_line()
 
   def q11(self):
-    # TODO: 
-
     query = """
       SELECT Activity.user_id, Activity.id, TrackPoint.altitude 
       FROM Activity 
@@ -277,8 +286,6 @@ class Queries:
         # for every next altitude calculate diff to previous
         for current_altitude in altitudes:
 
-          # print("user_id={},activity_id={},altitude={}".format(user_id, activity_id, current_altitude))
-
           # check if altitude is valid..
           if current_altitude != -777 and current_altitude > previous_altitude:
             activity_gained_altitude_sum += (current_altitude - previous_altitude)
@@ -286,13 +293,12 @@ class Queries:
         user_gained_altitude_sum += activity_gained_altitude_sum
 
       gained_altitude_per_user_id.append((user_id, user_gained_altitude_sum))
-      # print("user_id={}, gained_altitude={}".format(user_id, user_gained_altitude_sum))
 
     # sort list
     gained_altitude_per_user_id_ranks = sorted(gained_altitude_per_user_id, key=lambda tup: tup[1])[-20:]
     gained_altitude_per_user_id_ranks.reverse()
 
-    print('Query 11: \n')
+    self.heading(11)
     
     for rank, (user_id, gained_altitude) in enumerate(gained_altitude_per_user_id_ranks):
       print("Rank {}: user_id: {}, gained altitude: {}".format(rank + 1, user_id, gained_altitude))
@@ -300,7 +306,7 @@ class Queries:
     self.new_task_line()
 
   def q12(self):
-    # TODO: 
+
 
     query = """
       SELECT Activity.user_id, Activity.id, TrackPoint.date_time 
@@ -342,14 +348,19 @@ class Queries:
 
       users_with_invalid_activities[user_id] = invalid_activity_counter
 
-    print('Query 12:')
+    self.heading(12)
     
-    for user_id, n_invalid_activities in users_with_invalid_activities.items():
-      print('user_id: {}, number of invalid activities: {}'.format(user_id, n_invalid_activities))
+    for user_id, n_invalid_activities in users_with_invalid_activities.iter():
+      print('User ID: {} \n #No. of invalid activities: {}'.format(user_id, n_invalid_activities))
     self.new_task_line()
 
   def new_task_line(self):
     print("\n" + "---------------------" + "\n")
+
+
+  def heading(self,number):
+    result = pyfiglet.figlet_format("Query {}".format(number), font = "digital" )
+    print(result)
 
   def main(self):
     # self.q1()
@@ -362,8 +373,8 @@ class Queries:
     # self.q8()
     # self.q9()
     # self.q10()
-    # self.q11()
-    self.q12()
+    self.q11()
+    # self.q12()
 
 
 if __name__ == "__main__":
