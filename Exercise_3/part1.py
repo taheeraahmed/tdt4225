@@ -41,7 +41,6 @@ class CreateCollections:
     user_docs = []
 
     # TODO: Add array of references to activity object in each user document 
-    # TODO: Find out how to reference the activity documents for each user?
     for user_id in user_list:
       has_labels = 1 if user_id in user_has_labels else 0
       self.insert_activity_docs(user_id=user_id, has_label=has_labels)
