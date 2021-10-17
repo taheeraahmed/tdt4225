@@ -2,6 +2,7 @@ from DbConnector import DbConnector
 import os
 from bson import objectid
 import pprint
+from datetime import datetime
 
 class CreateCollections: 
   def __init__(self):
@@ -15,6 +16,10 @@ class CreateCollections:
     self.user_list = os.listdir(self.dataset_path)
     # A set with all users with labels
     self.users_with_labels = set()
+  
+  """
+  Dropping the collections
+  """
   def drop_collections(self):
     # Iterating through all collections and dropping them 
     for collection_name in self.db.list_collection_names(): 
@@ -24,6 +29,10 @@ class CreateCollections:
     self.line()
 
     # Create users, activities and trackpoints
+  
+  """ 
+  Creating the collections
+  """
   def insert_collections(self):
     users = self.db.create_collection('users')  
     activities = self.db.create_collection('activities')  
@@ -33,8 +42,10 @@ class CreateCollections:
     print(self.db.list_collection_names())
     self.line()
 
-  # Insert data into 'users' collection 
-  def insert_user_docs(self, collection_name='users'):
+  """ 
+  Insert data into 'users' and 'activity' collection  
+  """
+  def insert_user_activity_docs(self):
     print('Adding all users and their activities with their corresponding trackpoints....')
     
     # Making a set of all users which has labels
@@ -43,7 +54,10 @@ class CreateCollections:
         user_id = line.strip()
         self.users_with_labels.add(user_id) 
 
+    # Used for checking the progression cause this takes tiiiime
     count_users = 0
+
+    # Iterating through all the users
     for user_id in self.user_list:
       print('User {} is now being processed...'.format(user_id))
       # This list of all activities documents is going to be sent to the db
@@ -54,27 +68,25 @@ class CreateCollections:
       add_trajectory_filename = []
       # Finding the name of each trajectory file given a user
       for trajectory_filename in os.listdir("{}/{}/Trajectory".format(self.dataset_path, user_id)):
-        # Open one trajectory file with trackpoints here
         trajectory_file = open("{}/{}/Trajectory/{}".format(self.dataset_path,user_id, trajectory_filename))
-        
-        # Count lines in trajectory file from the 6th line 
         # Fix: Hehe we can fix the shady quick fix of count we want to
+
+        # Checking if there are more than 2500 trackpoints in the trajectory file
+        # Count lines in trajectory file from the 6th line 
         count_trackpoints = -6
         for trackpoints in trajectory_file.readlines():
           count_trackpoints+=1
-        # Closing the file
         trajectory_file.close()
-        # Checking if there are more than 2500 trackpoints in the trajectory file
         if count_trackpoints > 2500:
           pass
-        # The user has less than 2500 trackpoints in a trajectory, so we can add the activity to the file
         else: 
           add_trajectory_filename.append(trajectory_filename)
         
       # Dictionary with an activitity a user has
       activities_user = dict()  
-      # The user has labels, so the activity can be added directly from the labels.txt file AND we must also check for non-matching activities in 
-      # the trajectory file in order to find out whether or not a user has some unlabeld activities as well
+      # The user has labels, so the activity can be added directly from the labels.txt file AND we must also check 
+      # for non-matching activities in the trajectory file in order to find out whether or not a user has some
+      # unlabeld activities as well
       if has_labels:
         labels_file = open("{}/{}/labels.txt".format(self.dataset_path, user_id))
         next(labels_file)
@@ -108,54 +120,70 @@ class CreateCollections:
 
       # Checking if the user actually has any activities which has less than 2500 tp's
       if len(add_trajectory_filename) == 0:
+        print('This user does not have any activities which has less than 2500 trackpoints')
         pass
       # Adding activities to the list
       else: 
         activity_docs = self.make_activity_doc(activities_user)
         self.insert_docs('activities', activity_docs)
+        # TODO: Insert the trackpoints for each documents FUCK we need the activity_id for each document:)))
+        with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
+          # Skipping the first 7 lines
+          for _ in range(7):
+            next(trajectory_file)
+
+          trackpoints = []
+          
+          for i, line in enumerate(trajectory_file):
+            latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
+            print(latitude, longitude, altitude)
+            trackpoints.append((activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)))
+        
 
       # Adding users to the database 
       user_doc = self.make_user_doc(user_id,activity_docs)
       self.insert_docs('users', user_doc)
-
-
+      
+      # Just to check the progression
       count_users += 1
-      print("Progression: {}%\n".format((count_users/len(self.user_list)*100)))
+      progression = round(count_users/len(self.user_list)*100,1)
+      print("Progression: {}%\n".format(progression))
     print("\n All data has now been added to the db!! ")
     self.line()
-  
-  def make_user_doc(self,user_id,activity_docs):
-    # TODO: Add users
-    #   user_doc = {
-    #     '_id': user_id,
-    #     'has_labels': has_labels,
-    #     'activity_ids': '[list of object references,....]'
-    #   }
-    # Make a list of all the users activities dictionaries
-    activity_ids = [activity_doc['_activity_id'] for activity_doc in activity_docs ]
 
+  """
+  Making the user documents 
+  :param user_id (int) 
+  :param activity_docs (dict)
+  :return user_doc (list) - a list of a "JSON" object of a user
+  """
+  def make_user_doc(self,user_id,activity_docs):
+    activity_ids = [activity_doc['_activity_id'] for activity_doc in activity_docs ]
     user_doc = [{
       '_id': user_id,
       'has_labels': user_id in self.users_with_labels, 
       'user_activities': activity_ids
     }]
-
-    print(user_doc)
-
     return user_doc
+  
+  """
+  Make a datetime object
+  :param datetime_str (str) - '2009-01-03 01:21:34'
+  """
+  def make_datetime_object(self,datetime_str):
+    datetime_object = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S')
+    return datetime_object
 
+  """
+  Making activity documents for one user
+  :param activity_dict (dict) - a dictionary with all activities for one user
+  :return activity_docs (list) - a list with "JSON" objects for all activities a user has done
+  """
   def make_activity_doc(self,activity_dict):
-    # TODO: fix format of start and end date time?
-    # TODO: 
-    # activity_doc = autoincrementing int??
-    #   'start_date_time': ISODate?
-    #   'end_date_time': ISODate?
-    #   'transportation_mode': string
-    # }
     activity_docs = list()
     for activity_key in activity_dict:
-      start_date_time = activity_key.split(' - ')[0]
-      end_date_time = activity_key.split(' - ')[1]
+      start_date_time= self.make_datetime_object(activity_key.split(' - ')[0])
+      end_date_time = self.make_datetime_object(activity_key.split(' - ')[1])
       activity_doc = {
         '_activity_id':  objectid.ObjectId(),
         'start_date_time': start_date_time,
@@ -167,14 +195,35 @@ class CreateCollections:
 
     # TODO: Do we want activity to have many TP object references?
     # Or many TP objects referencing the same corresponding activity?
+    """
+    Making the trackpoint documents 
+    :param trackpoint_dict (dict) - should be a dictionary with all trackpoints given one activitiy
+    :return trackpoint_docs (list) - should be list of dictionaries containg all trackpoints given one activity
+    """
+    def make_trackpoint_doc(self,trackpoint_dict):
+      # tp doc={
+      #   'id': id (int)
+      #   'lat': double
+      #   'long': double
+      #   'altitude': int
+      #   'date_days': double
+      #   'date_time': datetime
+      #   'activity_id': ObjectId
+      # }
+      pass
   
-
-
-  # Insert data into the 'trackpoints' collection 
+  """
+  Inserting documents to the database
+  :param collection_name (str) - name of the collection you want to insert data
+  :param docs (list) - a list of "JSON" objects (hehe dictionaries) we want to insert
+  """
   def insert_docs(self,collection_name, docs):
     collection = self.db[collection_name]
     collection.insert_many(docs)
 
+  """
+  Just printing a line
+  """
   def line(self):
     print('-----------------------------------------------\n')
 
@@ -186,7 +235,7 @@ def main():
     
     db.drop_collections()
     db.insert_collections()
-    db.insert_user_docs()
+    db.insert_user_activity_docs()
     #db.insert_docs()
   except Exception as e:
       print("ERROR: Failed to use database:", e)
