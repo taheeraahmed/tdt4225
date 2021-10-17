@@ -20,3 +20,4 @@ group11, group11, readwrite
 `pip install -r requirments.txt` when you are in the folder named Exercise_3
 
 ## Now you should be good to go!! 
+
