@@ -109,23 +109,14 @@ class CreateCollections:
       # Checking if the user actually has any activities which has less than 2500 tp's
       if len(add_trajectory_filename) == 0:
         pass
-      # Creating a list of documents given a user, and inserting this into the db
+      # Adding activities to the list
       else: 
         activity_docs = self.make_activity_doc(activities_user)
         self.insert_docs('activities', activity_docs)
 
-
-      # TODO: Add users
-      #   user_doc = {
-      #     '_id': user_id,
-      #     'has_labels': has_labels,
-      #     'activity_ids': '[list of object references,....]'
-      #   }
-      #   user_docs.append(user_doc)
-      # self.insert_docs(collection_name=collection_name, docs=user_docs)
-
       # Adding users to the database 
-      self.make_user_doc(user_id,has_labels,activities_user)
+      user_doc = self.make_user_doc(user_id,activity_docs)
+      self.insert_docs('users', user_doc)
 
 
       count_users += 1
@@ -133,8 +124,25 @@ class CreateCollections:
     print("\n All data has now been added to the db!! ")
     self.line()
   
-  def make_user_doc(self,user_id,has_labels,activity_dict):
-    pass
+  def make_user_doc(self,user_id,activity_docs):
+    # TODO: Add users
+    #   user_doc = {
+    #     '_id': user_id,
+    #     'has_labels': has_labels,
+    #     'activity_ids': '[list of object references,....]'
+    #   }
+    # Make a list of all the users activities dictionaries
+    activity_ids = [activity_doc['_activity_id'] for activity_doc in activity_docs ]
+
+    user_doc = [{
+      '_id': user_id,
+      'has_labels': user_id in self.users_with_labels, 
+      'user_activities': activity_ids
+    }]
+
+    print(user_doc)
+
+    return user_doc
 
   def make_activity_doc(self,activity_dict):
     # TODO: fix format of start and end date time?
