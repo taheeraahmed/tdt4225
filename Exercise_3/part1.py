@@ -139,18 +139,27 @@ class CreateCollections:
         # TODO: Rename add_trajectory_filename bc it doesn't make sense, it is supposed to have all the trajectory filenames which are less than
         # 2500 tps
         
-        for activity_key in activities_user.keys():
+        #for activity_key in activities_user.keys():
           # Trackpoints for one activitiy
-          trackpoints = []
-          for trajectory_filename in add_trajectory_filename:
-            with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
-              for _ in range(7):
-                next(trajectory_file)
-              for i, line in enumerate(trajectory_file):
-                latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
-                activity_id = activities_user[activity_key][1]              
-                trackpoints.append((activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)))
-          # TODO: Add the trackpoints given one activity to the db
+        
+        activity_keys = [key for key in activities_user]
+        j = 0
+        for trajectory_filename in add_trajectory_filename:
+          with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
+            for _ in range(7):
+              next(trajectory_file)
+            # 2D array trackpoints given one activity (or trajectory file) 
+            # [[tp1],[tp2],...]
+            trackpoints = []
+            for i, line in enumerate(trajectory_file):
+              latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
+              activity_id = activities_user[activity_keys[j]][1]
+              trackpoints.append([activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)])
+            j += 1
+            #print(len(trackpoints), trajectory_filename)
+            trackpoint_documents = self.make_trackpoint_doc(trackpoints)
+            #print(trackpoints[0])
+            self.insert_docs('trackpoints', trackpoint_documents)
       user_doc = self.make_user_doc(user_id,activity_docs)
       self.insert_docs('users', user_doc)
       
@@ -161,9 +170,26 @@ class CreateCollections:
     print("\n All data has now been added to the db!! ")
     self.line()
 
-  def make_trackpoint_doc(self):
+  """
+  Makes a trackpoint document for each activity 
+  :param trackpoints_lst (list) - A 2D array [[activity_id, lat, lon, alt, date_days, date_time],[tp2], [tp3], ...]
+  :return trackpoint_docs (list) - A list of all the trackpoints and their one activity_id value
+  """
+  def make_trackpoint_doc(self,trackpoints_lst):
+    trackpoint_docs=[]
 
-    pass
+    for trackpoint in trackpoints_lst: 
+      #çççççprint(trackpoint)
+      trackpoint = {
+        'activity_id': trackpoint[0],
+        'latitude': trackpoint[1],
+        'longtitude': trackpoint[2],
+        'altitude': trackpoint[3],
+        'date_days': trackpoint[4],
+        'date_time': self.make_datetime_object(trackpoint[5]),
+      }
+      trackpoint_docs.append(trackpoint)
+    return trackpoint_docs
 
   """
   Making the user documents 
