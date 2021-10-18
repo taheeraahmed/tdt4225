@@ -127,23 +127,31 @@ class CreateCollections:
       if len(add_trajectory_filename) == 0:
         print('This user does not have any activities which has less than 2500 trackpoints')
         pass
-      # Adding activities to the list
+      # Adding activities to the list which will be inserted into our db
       else:
         activity_docs = self.make_activity_doc(activities_user)
         self.insert_docs('activities', activity_docs)
         # TODO: Insert the trackpoints with the correct objectID given an activity by using the activity dictionary? 
-        # or maybe the list of trajectories? maybe we need both??
+        # or maybe the list of trajectories? maybe we need both?? im not sure tbh fuuuccckkk 
+        # HOW TO ACCESS THE OBJECT ID WHICH IS IN THE ACTIVITY_DICTIONARY? MAYBE WE SHOULD HAVE THE ACTIVITY_ID SOMEWHERE ELSE??
+        # Taheera: I dont know where else to put it
+        for trajectory_filename in add_trajectory_filename:
+           with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
+            for _ in range(7):
+              next(trajectory_file)
+            for i, line in enumerate(trajectory_file):
+              latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
+              print(latitude, longitude, altitude)
+            
         # with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
         #   # Skipping the first 7 lines
-        #   for _ in range(7):
-        #     next(trajectory_file)
+        #   
 
         #   trackpoints = []
           
-        #   for i, line in enumerate(trajectory_file):
-        #     latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
+        #   
             #
-            # print(latitude, longitude, altitude)
+            # 
             #trackpoints.append((activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)))
         
 
