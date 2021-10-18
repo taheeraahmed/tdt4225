@@ -135,19 +135,22 @@ class CreateCollections:
         # or maybe the list of trajectories? maybe we need both?? im not sure tbh fuuuccckkk 
         # HOW TO ACCESS THE OBJECT ID WHICH IS IN THE ACTIVITY_DICTIONARY? MAYBE WE SHOULD HAVE THE ACTIVITY_ID SOMEWHERE ELSE??
         # Taheera: I dont know where else to put it
+        # I think I did it but its a bit of a mess, i'm not sure if the correct activity_id is given to the trackpoints tho
         # TODO: Rename add_trajectory_filename bc it doesn't make sense, it is supposed to have all the trajectory filenames which are less than
         # 2500 tps
-        trackpoints = []
-        for trajectory_filename in add_trajectory_filename:
-           with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
-            for _ in range(7):
-              next(trajectory_file)
-            for i, line in enumerate(trajectory_file):
-              latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
-              print(latitude, longitude, altitude)
-              #trackpoints.append((activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)))
-
-      # Adding user to the database 
+        
+        for activity_key in activities_user.keys():
+          # Trackpoints for one activitiy
+          trackpoints = []
+          for trajectory_filename in add_trajectory_filename:
+            with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
+              for _ in range(7):
+                next(trajectory_file)
+              for i, line in enumerate(trajectory_file):
+                latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
+                activity_id = activities_user[activity_key][1]              
+                trackpoints.append((activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)))
+          # TODO: Add the trackpoints given one activity to the db
       user_doc = self.make_user_doc(user_id,activity_docs)
       self.insert_docs('users', user_doc)
       
@@ -157,6 +160,10 @@ class CreateCollections:
       print("Progression: {}%\n".format(progression))
     print("\n All data has now been added to the db!! ")
     self.line()
+
+  def make_trackpoint_doc(self):
+
+    pass
 
   """
   Making the user documents 
