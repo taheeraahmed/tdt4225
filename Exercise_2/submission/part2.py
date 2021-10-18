@@ -191,7 +191,7 @@ class Queries:
 
   def q9(self):
     query = """
-      SELECT COUNT(*) AS count, YEAR(start_date_time) AS year, MONTH(start_date_time) AS month 
+      SELECT COUNT(*) AS count, YEAR(start_date_time) AS year, MONTH(end_date_time) AS month 
       FROM Activity 
       GROUP BY year, month 
       ORDER BY count DESC 
@@ -372,10 +372,10 @@ class Queries:
     # self.q6()
     # self.q7()
     # self.q8()
-    self.q9()
+    # self.q9()
     # self.q10()
     # self.q11()
-    # self.q12()
+    self.q12()
 
 
 if __name__ == "__main__":
