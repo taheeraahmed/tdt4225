@@ -82,7 +82,12 @@ class CreateCollections:
         else: 
           add_trajectory_filename.append(trajectory_filename)
         
-      # Dictionary with an activitity a user has
+      """
+      Dictionary with all activitity a user has
+      key: start-date-time - end-date-time (str) - format example: '2007-07-06 23:05:36 - 2007-07-07 12:40:40'
+      value: [transportation_mode, objectID] (list) - objectID is the ID for the activity
+
+      """
       activities_user = dict()  
       # The user has labels, so the activity can be added directly from the labels.txt file AND we must also check 
       # for non-matching activities in the trajectory file in order to find out whether or not a user has some
@@ -91,12 +96,12 @@ class CreateCollections:
         labels_file = open("{}/{}/labels.txt".format(self.dataset_path, user_id))
         next(labels_file)
         
-        # Adding some activities from labels.txt
+        # Adding some of the activities from labels.txt
         for line in labels_file.readlines():
           start_date_time, end_date_time, transportation_mode = line.strip().split("\t")
-          activities_user["{} - {}".format(start_date_time.replace("/", "-"), end_date_time.replace("/", "-"))] = transportation_mode
+          activities_user["{} - {}".format(start_date_time.replace("/", "-"), end_date_time.replace("/", "-"))] = [transportation_mode, objectid.ObjectId()]
         
-        # Check if a user has not labeled some activities
+        # Check if a user has not labeled some activities which has less than 2500 TPs
         for trajectory_filename in add_trajectory_filename:  
           with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
             lines = trajectory_file.readlines()
@@ -104,7 +109,7 @@ class CreateCollections:
             end_date_time = lines[-1].strip().split(",")[-2] + " " + lines[-1].strip().split(",")[-1]
           if not "{} - {}".format(start_date_time, end_date_time) in activities_user:
             transportation_mode = None
-            activities_user["{} - {}".format(start_date_time, end_date_time)] = transportation_mode
+            activities_user["{} - {}".format(start_date_time, end_date_time)] = [transportation_mode, objectid.ObjectId()]
             #print('does this every happen?')
 
       # The user doesn't have any labels so the activity can NEVER be added directly from the labels.txt file
@@ -115,7 +120,7 @@ class CreateCollections:
             start_date_time = lines[6].strip().split(",")[-2] + " " + lines[6].strip().split(",")[-1]
             end_date_time = lines[-1].strip().split(",")[-2] + " " + lines[-1].strip().split(",")[-1]
           transportation_mode = None
-          activities_user["{} - {}".format(start_date_time.replace("/", "-"), end_date_time.replace("/", "-"))] = transportation_mode
+          activities_user["{} - {}".format(start_date_time.replace("/", "-"), end_date_time.replace("/", "-"))] = [transportation_mode, objectid.ObjectId()]
       
 
       # Checking if the user actually has any activities which has less than 2500 tp's
@@ -123,21 +128,23 @@ class CreateCollections:
         print('This user does not have any activities which has less than 2500 trackpoints')
         pass
       # Adding activities to the list
-      else: 
+      else:
         activity_docs = self.make_activity_doc(activities_user)
         self.insert_docs('activities', activity_docs)
-        # TODO: Insert the trackpoints for each documents FUCK we need the activity_id for each document:)))
-        with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
-          # Skipping the first 7 lines
-          for _ in range(7):
-            next(trajectory_file)
+        # TODO: Insert the trackpoints with the correct objectID given an activity by using the activity dictionary? 
+        # or maybe the list of trajectories? maybe we need both??
+        # with open("{}/{}/Trajectory/{}".format(self.dataset_path, user_id, trajectory_filename)) as trajectory_file:
+        #   # Skipping the first 7 lines
+        #   for _ in range(7):
+        #     next(trajectory_file)
 
-          trackpoints = []
+        #   trackpoints = []
           
-          for i, line in enumerate(trajectory_file):
-            latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
-            print(latitude, longitude, altitude)
-            trackpoints.append((activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)))
+        #   for i, line in enumerate(trajectory_file):
+        #     latitude, longitude, _, altitude, date_days, date_str, time_str = line.strip().split(",")
+            #
+            # print(latitude, longitude, altitude)
+            #trackpoints.append((activity_id, float(latitude), float(longitude), int(float(altitude)), float(date_days), "{} {}".format(date_str, time_str)))
         
 
       # Adding users to the database 
@@ -185,10 +192,10 @@ class CreateCollections:
       start_date_time= self.make_datetime_object(activity_key.split(' - ')[0])
       end_date_time = self.make_datetime_object(activity_key.split(' - ')[1])
       activity_doc = {
-        '_activity_id':  objectid.ObjectId(),
+        '_activity_id':  activity_dict[activity_key][1],
         'start_date_time': start_date_time,
         'end_date_time': end_date_time,
-        'transportation_mode': activity_dict[activity_key], 
+        'transportation_mode': activity_dict[activity_key][0], 
       }
       activity_docs.append(activity_doc)
     return activity_docs
