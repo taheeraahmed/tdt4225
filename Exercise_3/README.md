@@ -11,13 +11,11 @@ group11, group11, readwrite
 
 # How to run 
 
-## Activate the virtual environment by writing
+## Usage of python scripts
 
-`source venv/bin/activate` in the terminal when you are in the folder named Exercise_3
+First you will need to activate the virtual environment by writing `source venv/bin/activate` in the terminal when you are in the folder named Exercise_3
 
-## Install the requirements 
-
-`pip install -r requirments.txt` when you are in the folder named Exercise_3
+Then you can write `pip install -r requirments.txt` in order to install the requirements. 
 
 ## Connecting to the database
 
