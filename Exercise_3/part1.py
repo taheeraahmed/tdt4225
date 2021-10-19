@@ -131,16 +131,6 @@ class CreateCollections:
       else:
         activity_docs = self.make_activity_doc(activities_user)
         self.insert_docs('activities', activity_docs)
-        # TODO: Insert the trackpoints with the correct objectID given an activity by using the activity dictionary? 
-        # or maybe the list of trajectories? maybe we need both?? im not sure tbh fuuuccckkk 
-        # HOW TO ACCESS THE OBJECT ID WHICH IS IN THE ACTIVITY_DICTIONARY? MAYBE WE SHOULD HAVE THE ACTIVITY_ID SOMEWHERE ELSE??
-        # Taheera: I dont know where else to put it
-        # I think I did it but its a bit of a mess, i'm not sure if the correct activity_id is given to the trackpoints tho
-        # TODO: Rename add_trajectory_filename bc it doesn't make sense, it is supposed to have all the trajectory filenames which are less than
-        # 2500 tps
-        
-        #for activity_key in activities_user.keys():
-          # Trackpoints for one activitiy
         
         activity_keys = [key for key in activities_user]
         j = 0
@@ -272,10 +262,10 @@ def main():
   test = None
   try:
     db = CreateCollections()
-    
-    db.drop_collections()
-    db.insert_collections()
-    db.insert_user_activity_docs()
+    """ THIS TAKES LONG TIME, TAKE CARE IF YOU DECIED TO CHANGE STUFF"""
+    #db.drop_collections()
+    #db.insert_collections()
+    #db.insert_user_activity_docs()
     #db.insert_docs()
   except Exception as e:
       print("ERROR: Failed to use database:", e)
