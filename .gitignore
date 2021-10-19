@@ -1,6 +1,3 @@
-Exercise_2/dataset
-Exercise_2/venv
-Exercise_3/dataset
-Exercise_3/venv
-
+dataset/
+venv/
 .DS_Store
