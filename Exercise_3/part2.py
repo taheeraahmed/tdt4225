@@ -1,6 +1,8 @@
 from DbConnector import DbConnector
 from pprint import pprint
 import pyfiglet
+from datetime import datetime
+from haversine import haversine
 
  
 
@@ -18,14 +20,14 @@ class AnsweringQueries:
     # TODO: .count() is deprecated?? tried switching to .count_documents() 
     # But then I get 'Cursor' object has no attribute 'count_documents'
     # IT RETURNS THE CORRECT VALUE HOWEVER
-    users = self.db.users.find().count()
-    activities = self.db.activities.find().count()
-    trackpoints = self.db.trackpoints.find().count()
+    users = self.db.User.find().count()
+    activities = self.db.Activity.find().count()
+    trackpoints = self.db.TrackPoint.find().count()
 
     self.heading(1)
-    print("#No. of users: {} ".format(users))
-    print("#No. of activities: {} ".format(activities))
-    print("#No. of trackpoints: {}".format(trackpoints))
+    print("# users: {} ".format(users))
+    print("# activities: {} ".format(activities))
+    print("# trackpoints: {}".format(trackpoints))
 
     self.new_task_line()
 
@@ -34,12 +36,26 @@ class AnsweringQueries:
   """
   def query_2(self):
 
-    idk = self.db.users.aggregate([{'$sort: {user_activities: 1}'}])
+    # directly collects all "rows" into list
+    result = list(self.db.Activity.aggregate([
+      {'$group': {'_id': '$_user_id', 'doc_count': { '$sum': 1 } } }
+    ]))
+    # result may look like this: [..., {'_id': '157', 'doc_count': 13}, ...]
+
   
+    # sort list by 'doc_count' field
+    result.sort(key=lambda d: d['doc_count'])
 
-    self.heading(2)
+    avg_doc_count = sum(map(lambda d: d['doc_count'], result)) / len(result)
+    
+    self.heading(2) 
 
-    print(idk)
+    print('minimum activity count: {} by user_id: {}, highest activity count: {} by user_id: {}, avg activity count: {}'.format(
+      result[0]['doc_count'], result[0]['_id'],
+      result[-1]['doc_count'], result[-1]['_id'],
+      avg_doc_count
+    ))
+
 
     self.new_task_line()
 
@@ -47,7 +63,20 @@ class AnsweringQueries:
   Find the top 10 users with the highest number of activities.
   """
   def query_3(self):
+
+    # directly collects all "rows" into list
+    result = list(self.db.Activity.aggregate([
+      {'$group': {'_id': '$_user_id', 'doc_count': { '$sum': 1 } } }
+    ]))
+
+    # sort list by 'doc_count' field
+    result.sort(key=lambda d: d['doc_count'])
+
+
     self.heading(3)
+
+    for i in range(10):
+      print('[Rank {}] user_id: {}, activity count: {}'.format(i+1, result[-(i+1)]['_id'], result[-(i+1)]['doc_count']))
 
     self.new_task_line()
 
@@ -56,6 +85,27 @@ class AnsweringQueries:
   the activity the next day
   """
   def query_4(self):
+
+    # db.Activity.aggregate({'$match': {'$expr': { "$eq": [{ "$dayOfMonth": "$start_date_time" }, { "$dayOfMonth": "$end_date_time" }]}}})
+
+    # db.Activity.aggregate({
+    #   '$match': {
+    #     '$expr': {
+    #       '$and': [
+    #         {'$ne': [{ "$dayOfMonth": "$start_date_time" }, { '$dayOfMonth': '$end_date_time' }]},
+    #         {'$eq': [{
+    #           '$subtract': ['$end_date_time', '$start_date_time']
+    #                 endDate: ,
+    #                 unit: 'day'
+    #           }
+    #           },
+    #           0
+    #         ]}
+    #       ]
+    #     }
+    #   }
+    # })
+
     self.heading(4)
 
     self.new_task_line()
@@ -65,7 +115,27 @@ class AnsweringQueries:
   even if you get zero results
   """
   def query_5(self):
+    """
+    FINISHED
+    """
+    result = list(self.db.Activity.aggregate({
+      '$group': { 
+        '_id': { 'a': '$_user_id', 'b': '$start_date_time', 'c': '$end_date_time' },
+
+        'count': { '$sum':  1 },
+
+        'docs': { '$push': "$_id" }
+      }},
+      {
+        '$match': {
+          'count': { '$gt' : 1 }
+        }
+      }
+    ))
+
     self.heading(5)
+
+    print('equal Activities: ', result)
 
     self.new_task_line()
 
@@ -75,17 +145,57 @@ class AnsweringQueries:
   person in time and space (pandemic  tracking). Close is defined as the same
   minute (60 seconds) and space (100 meters). (This is a simplification of the“unsolvable” problem given i exercise 2)
   """
-  def query_6(self):
+  def query_6(self): 
+    # Get all TPs close to (39.97548, 116.33031) at time ‘2008-08-24 15:38:00’
+    # +/- 60 sec
+    # 100 metres 
+    
+
+    db.TrackPoint.aggregate({
+        '$geoNear' : {
+          near: { type: "Point", coordinates: [ 39.97548 ,  116.33031 ] },
+          distanceField: "dist.calculated",
+          maxDistance: 100,
+          query: { category: "Parks" },
+          includeLocs: "dist.location",
+          spherical: true
+      },
+      '$match' : {
+        'date_time': {'$gte': ISODate('2008-08-24 15:37:00'), '$lte': ISODate('2008-08-24 15:39:00')}
+      },
+    })
+    
+
     self.heading(6)
 
     self.new_task_line()
 
   """
   Find all users that have never taken a taxi
+  FOR THE REPORT: Did this the other way around, found the users who have taken a taxi once and then just removed them from the list of all users
   """
   def query_7(self):
-    self.heading(7)
+    # Taking all users who have taken a taxi once
+    # 1. Find activities where the transportation_mode is taxi and get the user_ids
+    result_taxi_once = list(self.db.Activity.aggregate([
+      {'$match':{'transportation_mode':{'$eq':'taxi'}}},
+      {'$unwind':'$_user_id'},
+      {'$group':{'_id':'$_user_id'}}
+    ]))
 
+    taxi_once = [user_id['_id'] for user_id in result_taxi_once]
+
+    # 2. Find all user id's, then just return the user id's which is not in the query??
+    result_all_users = list(self.db.User.distinct("_id"))
+
+    # 3. Do stuff with python
+    never_taxi = []
+    for all_user_id in result_all_users: 
+      if not all_user_id in taxi_once:
+        never_taxi.append(all_user_id)
+
+    self.heading(7)
+    print('These users have never taken a taxi:', never_taxi)
     self.new_task_line()
 
   """
@@ -94,21 +204,158 @@ class AnsweringQueries:
   transportation mode is null
   """
   def query_8(self):
+    # Sorting all activities into different transportation modes and finding a list of all corresponding user_ids (they are not distinct)
+    results = list(self.db.Activity.aggregate([
+      { "$unwind": "$transportation_mode" },
+      {
+          "$group": {
+              "_id": {"$toLower": '$transportation_mode'},
+              "user_ids": { "$push": '$$ROOT._user_id' },
+          }
+      },
+    ]))
     self.heading(8)
+
+    for result in results: 
+      user_ids = set(result['user_ids'])
+      
+      unique_users = set()
+      for user_id in user_ids: 
+        unique_users.add(user_id)
+
+      print("Transportation mode: {} #No. users: {}".format(result['_id'],len(unique_users)))
+
+    self.new_task_line()
 
   """
   a) Find the year and month with the most activities. 
   b) Which user had the most activities this year and month, and how many
   recorded hours do they have? Do they have more hours recorded than the user
   with the second most activities?
+
+  FOR THE REPORT: We assume that start_date_time decieds which month (if edge case)
   """
   def query_9(self):
+    """Marianne"""
+    self.heading(9)
+    # $max - returns highest expression value for group
+
+    # a) Find year and month with most activities
+    # 1- get year and month as attributes 
+    # 2 - find activities per year and month
+    # 3 - find max of 2
+
+    # Find most activities per year
+    result = list(self.db.Activity.aggregate([
+      {
+        '$project':
+          {
+            'year': { '$year': "$start_date_time" } 
+          }
+      },
+      {
+        '$group': 
+        {
+            "_id": {"$toLower": '$year'},
+            'activity_count': {'$sum': 1 }
+            }
+      },
+      {"$sort": {'activity_count': -1}}
+    ]))
+
+    print("The year with most activities {}. Count: {}".format(result[0]['_id'],result[0]['activity_count']))        
+   
+        
+
+    # Find most activities per month
+    result = list(self.db.Activity.aggregate([
+      {
+        '$project':
+          {
+            'month': { '$month': "$start_date_time" },
+            'year': { '$year': "$start_date_time" } 
+            }
+        },   
+        {
+          '$group': 
+          {
+              '_id': { "$toLower": '$month'},
+              'year_test': {},
+              'activity_count': {'$sum': 1 },
+          }
+        },
+        {
+          '$sort': {'activity_count': -1},
+        }   
+    ])
+    )
+    print("The month with most activities {}. Count: {}".format(result[0]['_id'],result[0]['activity_count']))      
+    
+
+    # b) Which user had the most activities this year and month, and how many
+    # recorded hours do they have? Do they have more hours recorded than the user
+    # with the second most activities?
+
+
+
+
     self.heading(9)
 
   """
   Find the total distance (in km) walked in 2008, by user with id=112.
   """
   def query_10(self):
+    """TODO: explain how to create that index for activity_id"""
+
+    # IMPORTANT TO MENTION: For performance-reasons we created an non-unique, non-sparse Index for '_activity_id' in TrackPoint
+    # self.db.TrackPoint.create_index([
+    #   {
+    #     '_activity_id': 1
+    #   },
+    #   {
+    #     'unique': False,
+    #     'sparse': False,
+    #   }
+    # ])
+
+    result = list(self.db.Activity.aggregate([
+      {'$match': {'_user_id': '112', 'transportation_mode': 'walk'}},
+      {'$lookup': {
+        'from': 'TrackPoint',
+        'localField': '_id',
+        'foreignField': '_activity_id',
+        'as': 'Activity_joined_TrackPoint'
+      }}
+    ]))
+
+    total_walked_distance = 0
+
+    # iterate over all the activities from user_id '112'
+    for activity in result:
+      table = list(activity.items())
+      # structure of table:
+      # [0]: ('_id', <value>)
+      # [1]: ('_user_id', <value>)
+      # [2]: ('transportation_mode', <value>)
+      # [3]: ('start_date_time', <value>)
+      # [4]: ('end_date_time', <value>)
+      # [5]: ('Activity_joined_TrackPoint', [<all the Trackpoint records>])
+
+
+      # use first TrackPoint as start reference
+      previous_position = table[5][1].pop(0)['position']
+
+      # iterate over all the joined TrackPoint entries
+      for track_point in table[5][1]:
+        distance = haversine(previous_position, track_point['position'])
+        previous_position = track_point['position']
+
+        # print("from {} to {}: {}km".format(previous_position, track_point['position'], distance))
+        total_walked_distance += distance
+
+    print('total walked distance by user_id "112": {}'.format(total_walked_distance))
+  
+
     self.heading(10)
   
   """
@@ -118,6 +365,59 @@ class AnsweringQueries:
   3. Tip: (tpn.altitude-tpn-1.altitude), tpn.altitude >tpn-1.altitude
   """
   def query_11(self):
+    """Elias"""
+
+    result = list(self.db.Activity.aggregate([
+      {'$lookup': {
+        'from': 'TrackPoint',
+        'localField': '_id',
+        'foreignField': '_activity_id',
+        'as': 'Activity_joined_TrackPoint'
+      }},
+      {'$project': {'_user_id': 1, 'Activity_joined_TrackPoint.altitude': 1}} # only selects actual altitude values to be selected (saves huge amounts of bandwidth)
+    ]))
+
+    total_gained_altitude_by_user = dict()
+
+    # iterate over all the activities from user_id '112'
+    for activity in result:
+      total_gained_altitude_by_current_activity = 0
+
+      table = list(activity.items())
+      # structure of table:
+      # [0]: ('_id', <value>)
+      # [1]: ('_user_id, <value>)
+      # [2]: ('Activity_joined_TrackPoint.altitude', [<all the Trackpoint records>])
+
+
+      # use first TrackPoint as start reference
+      previous_altitude = table[2][1].pop(0)['altitude']
+
+      # iterate over all the joined TrackPoint entries
+      for track_point in table[2][1]:
+        current_altitude = track_point['altitude']
+
+        if current_altitude != -777 and current_altitude > previous_altitude:
+          total_gained_altitude_by_current_activity += (current_altitude - previous_altitude)
+        
+        previous_altitude = track_point['altitude']
+
+      # now add gained altitude of this activity to the user
+      user_id = table[1][1]
+      if user_id not in total_gained_altitude_by_user:
+        total_gained_altitude_by_user[user_id] = 0
+
+      total_gained_altitude_by_user[user_id] += total_gained_altitude_by_current_activity
+
+    # collect dict as list and then sort it by second element (total_gained_altitude)
+    total_gained_altitude_by_user = list(total_gained_altitude_by_user.items())
+    total_gained_altitude_by_user.sort(key=lambda e: e[1])
+    total_gained_altitude_by_user.reverse()
+
+    for rank, (user_id, gained_altitude) in enumerate(total_gained_altitude_by_user[:20]):
+      print("Rank {}: user_id: {}, gained altitude: {}".format(rank + 1, user_id, gained_altitude))
+
+
     self.heading(11)
   """
   Find all users who have invalid activities, and the number of invalid activities peruser 
@@ -146,13 +446,18 @@ def main():
   test = None
   try:
     queries = AnsweringQueries()
-    """ THIS TAKES LONG TIME, TAKE CARE IF YOU DECIED TO CHANGE STUFF"""
-    queries.query_1()
-    queries.query_2()
-    #db.drop_collections()
-    #db.insert_collections()
-    #db.insert_user_activity_docs()
-    #db.insert_docs()
+    # queries.query_1()
+    # queries.query_2()
+    # queries.query_3()
+    # TODO: queries.query_4() 
+    # queries.query_5()
+    # TODO: queries.query_6() 
+    # queries.query_7() 
+    # TODO: queries.query_8() 
+    # TODO: queries.query_9()
+    queries.query_10()  
+    # TODO: queries.query_11() 
+    # TODO: queries.query_12() 
   except Exception as e:
       print("ERROR: Failed to use database:", e)
   finally:

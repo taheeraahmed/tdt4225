@@ -98,8 +98,10 @@ if __name__ == "__main__":
                         
                         # cast and building it back to a tuple for executemany()
                         trackpoint_docs.append({
+                            'user_id': user_id,
                             'lat': float(latitude),
                             'lon': float(longitude),
+                            'position': [float(longitude), float(latitude)],
                             'altitude': int(float(altitude)),
                             'date_days': float(date_days),
                             'date_time': datetime.strptime("{} {}".format(date_str, time_str), '%Y-%m-%d %H:%M:%S'),

@@ -169,7 +169,6 @@ class CreateCollections:
     trackpoint_docs=[]
 
     for trackpoint in trackpoints_lst: 
-      #çççççprint(trackpoint)
       trackpoint = {
         'activity_id': trackpoint[0],
         'latitude': trackpoint[1],
@@ -222,25 +221,6 @@ class CreateCollections:
       }
       activity_docs.append(activity_doc)
     return activity_docs
-
-    # TODO: Do we want activity to have many TP object references?
-    # Or many TP objects referencing the same corresponding activity?
-    """
-    Making the trackpoint documents 
-    :param trackpoint_dict (dict) - should be a dictionary with all trackpoints given one activitiy
-    :return trackpoint_docs (list) - should be list of dictionaries containg all trackpoints given one activity
-    """
-    def make_trackpoint_doc(self,trackpoint_dict):
-      # tp doc={
-      #   'id': id (int)
-      #   'lat': double
-      #   'long': double
-      #   'altitude': int
-      #   'date_days': double
-      #   'date_time': datetime
-      #   'activity_id': ObjectId
-      # }
-      pass
   
   """
   Inserting documents to the database

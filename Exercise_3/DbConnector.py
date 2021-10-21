@@ -18,7 +18,7 @@ class DbConnector:
                  USER="group11",
                  PASSWORD="group11"):
         uri = "mongodb://%s:%s@%s/%s" % (USER, PASSWORD, HOST, DATABASE)
-        # Connect to the databases
+         # Connect to the databases
         try:
             self.client = MongoClient(uri)
             self.db = self.client[DATABASE]
