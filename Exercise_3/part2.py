@@ -149,22 +149,34 @@ class AnsweringQueries:
     # Get all TPs close to (39.97548, 116.33031) at time ‘2008-08-24 15:38:00’
     # +/- 60 sec
     # 100 metres 
+
+    # TODO: we have to explain, that we added the coordinates as array and created a 2dsphere index for TrackPoint
+    # this way its way faster to check for close coordinates
+    # We also have to state, that we saved the user_id in the TrackPoint table
     
 
-    db.TrackPoint.aggregate({
-        '$geoNear' : {
-          near: { type: "Point", coordinates: [ 39.97548 ,  116.33031 ] },
-          distanceField: "dist.calculated",
-          maxDistance: 100,
-          query: { category: "Parks" },
-          includeLocs: "dist.location",
-          spherical: true
+    result = list(self.db.TrackPoint.aggregate([
+      {
+        '$geoNear': {
+          'near': { 'type': 'Point', 'coordinates': [ 116.33031, 39.97548 ] },
+          'distanceField': 'dist.calculated',
+          'maxDistance': 100,
+          'includeLocs': 'dist.location',
+          'spherical': True
+        },
       },
-      '$match' : {
-        'date_time': {'$gte': ISODate('2008-08-24 15:37:00'), '$lte': ISODate('2008-08-24 15:39:00')}
-      },
-    })
-    
+      {
+        '$match': {
+          'date_time': {'$gte': datetime.strptime('2008-08-24 15:37:00', '%Y-%m-%d %H:%M:%S'), '$lte': datetime.strptime('2008-08-24 15:39:00', '%Y-%m-%d %H:%M:%S')}
+        }
+      }
+    ]))
+
+    print("TrackPoints that have been close to [ 116.33031, 39.97548 ] around 2008-08-24 15:37:00")
+    for r in result:
+      print('user_id: {}, position: {}, date_time: {}'.format(r['_user_id'], r['position'], r['date_time']))
+
+
 
     self.heading(6)
 
@@ -365,8 +377,6 @@ class AnsweringQueries:
   3. Tip: (tpn.altitude-tpn-1.altitude), tpn.altitude >tpn-1.altitude
   """
   def query_11(self):
-    """Elias"""
-
     result = list(self.db.Activity.aggregate([
       {'$lookup': {
         'from': 'TrackPoint',
@@ -425,8 +435,6 @@ class AnsweringQueries:
     where the timestamps deviate with at least 5 minutes. 
   """
   def query_12(self):
-    """Elias"""
-
     result = list(self.db.Activity.aggregate([
       {'$lookup': {
         'from': 'TrackPoint',
@@ -472,10 +480,11 @@ class AnsweringQueries:
           # we found one invalid trackpoint -> don't need to check the other trackpoints
           break
         
+    print("Users with at least one invalid Activity:")
     for user_id, n_invalid_activities in n_invalid_activities_by_user_id.items():
       print("user_id: {}, n_invalid_activities: {}".format(user_id, n_invalid_activities))
 
-      
+
     self.heading(12)
   
   """
