@@ -172,14 +172,10 @@ class AnsweringQueries:
       }
     ]))
 
+    self.heading(6)
     print("TrackPoints that have been close to [ 116.33031, 39.97548 ] around 2008-08-24 15:37:00")
     for r in result:
       print('user_id: {}, position: {}, date_time: {}'.format(r['_user_id'], r['position'], r['date_time']))
-
-
-
-    self.heading(6)
-
     self.new_task_line()
 
   """
@@ -216,6 +212,7 @@ class AnsweringQueries:
   transportation mode is null
   """
   def query_8(self):
+    self.heading(8)
     # Sorting all activities into different transportation modes and finding a list of all corresponding user_ids (they are not distinct)
     results = list(self.db.Activity.aggregate([
       { "$unwind": "$transportation_mode" },
@@ -226,7 +223,7 @@ class AnsweringQueries:
           }
       },
     ]))
-    self.heading(8)
+    
 
     for result in results: 
       user_ids = set(result['user_ids'])
@@ -250,7 +247,6 @@ class AnsweringQueries:
   def query_9(self):
     """Marianne"""
     self.heading(9)
-    # $max - returns highest expression value for group
 
     # a) Find year and month with most activities
     result = list(self.db.Activity.aggregate([
@@ -303,6 +299,7 @@ class AnsweringQueries:
     user_more = result[0]['count'] - result[1]['count']
 
     print('User {} has {} more activties than user {}'.format(result[0]['_id']['user_id'],user_more,result[1]['_id']['user_id']))
+    self.new_task_line()
 
   
 
@@ -358,10 +355,11 @@ class AnsweringQueries:
         # print("from {} to {}: {}km".format(previous_position, track_point['position'], distance))
         total_walked_distance += distance
 
+    self.heading(10)
     print('total walked distance by user_id "112": {}'.format(total_walked_distance))
+    self.new_task_line()
   
 
-    self.heading(10)
   
   """
   Find the top 20 users who have gained the most altitude meters
@@ -418,11 +416,14 @@ class AnsweringQueries:
     total_gained_altitude_by_user.sort(key=lambda e: e[1])
     total_gained_altitude_by_user.reverse()
 
+    self.heading(11)
+
     for rank, (user_id, gained_altitude) in enumerate(total_gained_altitude_by_user[:20]):
       print("Rank {}: user_id: {}, gained altitude: {}".format(rank + 1, user_id, gained_altitude))
 
+    self.new_task_line()
 
-    self.heading(11)
+
   """
   Find all users who have invalid activities, and the number of invalid activities peruser 
   1. An invalid activity is defined as an activity with consecutive trackpoints
@@ -474,12 +475,14 @@ class AnsweringQueries:
           # we found one invalid trackpoint -> don't need to check the other trackpoints
           break
         
+    self.heading(12)
+    
     print("Users with at least one invalid Activity:")
     for user_id, n_invalid_activities in n_invalid_activities_by_user_id.items():
       print("user_id: {}, n_invalid_activities: {}".format(user_id, n_invalid_activities))
 
+    self.new_task_line()
 
-    self.heading(12)
 
   """
   Make a datetime object
@@ -513,13 +516,13 @@ def main():
     # queries.query_3()
     # TODO: queries.query_4() 
     # queries.query_5()
-    # TODO: queries.query_6() 
+    # queries.query_6() 
     # queries.query_7() 
     # queries.query_8() 
-    queries.query_9()
+    # queries.query_9()
     # queries.query_10()  
-    # TODO: queries.query_11() 
-    # TODO: queries.query_12() 
+    # queries.query_11() 
+    # queries.query_12() 
   except Exception as e:
       print("ERROR: Failed to use database:", e)
   finally:
