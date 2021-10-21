@@ -4,6 +4,7 @@ from DbConnector import DbConnector
 from tabulate import tabulate
 import os
 import traceback
+from datetime import datetime
 
 if __name__ == "__main__":
 
@@ -78,17 +79,8 @@ if __name__ == "__main__":
                     if "{} - {}".format(start_date_time, end_date_time) in transportation_mode_dict:
                         transportation_mode = transportation_mode_dict["{} - {}".format(start_date_time, end_date_time)]
                         print("matched transportation_mode: key={},value={}".format("{} - {}".format(start_date_time, end_date_time), transportation_mode))
+                
 
-
-                result = db['Activity'].insert_one({
-                    '_user_id': user_id,
-                    'transportation_mode': transportation_mode,
-                    'start_date_time': start_date_time,
-                    'end_date_time': end_date_time
-                })
-
-                # since mongodb creates object IDs itself we have to ask it for the just generated ID
-                activity_id = result.inserted_id
 
 
                 with open("{}/{}/Trajectory/{}".format(relative_dataset_path, user_id, activity_filename)) as activity_file:
@@ -110,13 +102,25 @@ if __name__ == "__main__":
                             'lon': float(longitude),
                             'altitude': int(float(altitude)),
                             'date_days': float(date_days),
-                            'date_time': "{} {}".format(date_str, time_str),
-                            '_activity_id': activity_id
+                            'date_time': datetime.strptime("{} {}".format(date_str, time_str), '%Y-%m-%d %H:%M:%S'),
                         })
 
-                    if len(trackpoint_docs) > 2506:
+                    if len(trackpoint_docs) > 2500:
                         print("has {} TrackPoints: skipping!".format(len(trackpoint_docs)))
                         continue
+
+                    result = db['Activity'].insert_one({
+                        '_user_id': user_id,
+                        'transportation_mode': transportation_mode,
+                        'start_date_time': datetime.strptime(start_date_time, '%Y-%m-%d %H:%M:%S'),
+                        'end_date_time': datetime.strptime(end_date_time, '%Y-%m-%d %H:%M:%S')
+                    })
+
+                    # since mongodb creates object IDs itself we have to ask it for the just generated ID
+                    activity_id = result.inserted_id
+
+                    for trackpoint_doc in trackpoint_docs:
+                        trackpoint_doc['_activity_id'] = activity_id
 
 
                     # else we continue with insertion into database
