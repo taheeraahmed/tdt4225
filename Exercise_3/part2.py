@@ -174,14 +174,10 @@ class AnsweringQueries:
       }
     ]))
 
+    self.heading(6)
     print("TrackPoints that have been close to [ 116.33031, 39.97548 ] around 2008-08-24 15:37:00")
     for r in result:
       print('user_id: {}, position: {}, date_time: {}'.format(r['_user_id'], r['position'], r['date_time']))
-
-
-
-    self.heading(6)
-
     self.new_task_line()
 
   """
@@ -218,6 +214,7 @@ class AnsweringQueries:
   transportation mode is null
   """
   def query_8(self):
+    self.heading(8)
     # Sorting all activities into different transportation modes and finding a list of all corresponding user_ids (they are not distinct)
     results = list(self.db.Activity.aggregate([
       { "$unwind": "$transportation_mode" },
@@ -228,7 +225,7 @@ class AnsweringQueries:
           }
       },
     ]))
-    self.heading(8)
+    
 
     for result in results: 
       user_ids = set(result['user_ids'])
@@ -252,68 +249,61 @@ class AnsweringQueries:
   def query_9(self):
     """Marianne"""
     self.heading(9)
-    # $max - returns highest expression value for group
 
     # a) Find year and month with most activities
-    # 1- get year and month as attributes 
-    # 2 - find activities per year and month
-    # 3 - find max of 2
-
-    # Find most activities per year
     result = list(self.db.Activity.aggregate([
       {
-        '$project':
-          {
-            'year': { '$year': "$start_date_time" } 
-          }
+        '$group': {
+          '_id': {
+            'year': { '$year': '$start_date_time' },
+            'month': { '$month': '$start_date_time' },
+          },
+          'activity_count': { '$sum': 1 },
+          },
+        },
+        { '$sort': { 'activity_count': -1 },
       },
-      {
-        '$group': 
-        {
-            "_id": {"$toLower": '$year'},
-            'activity_count': {'$sum': 1 }
-            }
-      },
-      {"$sort": {'activity_count': -1}}
     ]))
 
-    print("The year with most activities {}. Count: {}".format(result[0]['_id'],result[0]['activity_count']))        
-   
-        
 
-    # Find most activities per month
-    result = list(self.db.Activity.aggregate([
-      {
-        '$project':
-          {
-            'month': { '$month': "$start_date_time" },
-            'year': { '$year': "$start_date_time" } 
-            }
-        },   
-        {
-          '$group': 
-          {
-              '_id': { "$toLower": '$month'},
-              'year_test': {},
-              'activity_count': {'$sum': 1 },
-          }
-        },
-        {
-          '$sort': {'activity_count': -1},
-        }   
-    ])
-    )
-    print("The month with most activities {}. Count: {}".format(result[0]['_id'],result[0]['activity_count']))      
-    
+    print("a)\nYear: {} Month: {} Count: {}\n".format(result[0]['_id']['year'],result[0]['_id']['month'], result[0]['activity_count']))
+
 
     # b) Which user had the most activities this year and month, and how many
     # recorded hours do they have? Do they have more hours recorded than the user
     # with the second most activities?
 
+    result = list(
+      self.db.Activity.aggregate([
+        {
+          '$match': {
+            'start_date_time': {
+              '$lt': self.make_datetime_object('2008-12-01 00:00:00'),
+              '$gte': self.make_datetime_object('2008-10-31 23:59:59'),
+            },
+          },
+        },
+        {
+          '$group': {
+            '_id': {
+              'user_id': '$_user_id',
+            },
+            'count': { '$sum': 1 },
+          },
+        },
+        { '$sort': { 'count': -1 } },
+      ])
+    )
 
+    print("b)\n1. User ID: {}, count: {}".format(result[0]['_id']['user_id'], result[0]['count']))
+    print("2. User ID: {}, count: {}".format(result[1]['_id']['user_id'], result[1]['count']))
 
+    user_more = result[0]['count'] - result[1]['count']
 
-    self.heading(9)
+    print('User {} has {} more activties than user {}'.format(result[0]['_id']['user_id'],user_more,result[1]['_id']['user_id']))
+    self.new_task_line()
+
+  
 
   """
   Find the total distance (in km) walked in 2008, by user with id=112.
@@ -367,10 +357,11 @@ class AnsweringQueries:
         # print("from {} to {}: {}km".format(previous_position, track_point['position'], distance))
         total_walked_distance += distance
 
+    self.heading(10)
     print('total walked distance by user_id "112": {}'.format(total_walked_distance))
+    self.new_task_line()
   
 
-    self.heading(10)
   
   """
   Find the top 20 users who have gained the most altitude meters
@@ -378,6 +369,7 @@ class AnsweringQueries:
   2. Remember that some altitude-values are invalid
   3. Tip: (tpn.altitude-tpn-1.altitude), tpn.altitude >tpn-1.altitude
   """
+
   def query_11(self):
     result = list(self.db.Activity.aggregate([
       {'$lookup': {
@@ -426,11 +418,14 @@ class AnsweringQueries:
     total_gained_altitude_by_user.sort(key=lambda e: e[1])
     total_gained_altitude_by_user.reverse()
 
+    self.heading(11)
+
     for rank, (user_id, gained_altitude) in enumerate(total_gained_altitude_by_user[:20]):
       print("Rank {}: user_id: {}, gained altitude: {}".format(rank + 1, user_id, gained_altitude))
 
+    self.new_task_line()
 
-    self.heading(11)
+
   """
   Find all users who have invalid activities, and the number of invalid activities peruser 
   1. An invalid activity is defined as an activity with consecutive trackpoints
@@ -482,12 +477,22 @@ class AnsweringQueries:
           # we found one invalid trackpoint -> don't need to check the other trackpoints
           break
         
+    self.heading(12)
+    
     print("Users with at least one invalid Activity:")
     for user_id, n_invalid_activities in n_invalid_activities_by_user_id.items():
       print("user_id: {}, n_invalid_activities: {}".format(user_id, n_invalid_activities))
 
+    self.new_task_line()
 
-    self.heading(12)
+
+  """
+  Make a datetime object
+  :param datetime_str (str) - '2009-01-03 01:21:34'
+  """
+  def make_datetime_object(self,datetime_str):
+    datetime_object = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S')
+    return datetime_object
   
   """
   Printing a line for style points
@@ -513,13 +518,13 @@ def main():
     # queries.query_3()
     # TODO: queries.query_4() 
     # queries.query_5()
-    # TODO: queries.query_6() 
+    # queries.query_6() 
     # queries.query_7() 
     # queries.query_8() 
-    # TODO: queries.query_9()
-    queries.query_10()  
-    # TODO: queries.query_11() 
-    # TODO: queries.query_12() 
+    # queries.query_9()
+    # queries.query_10()  
+    # queries.query_11() 
+    # queries.query_12() 
   except Exception as e:
       print("ERROR: Failed to use database:", e)
   finally:
