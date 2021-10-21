@@ -149,22 +149,34 @@ class AnsweringQueries:
     # Get all TPs close to (39.97548, 116.33031) at time ‘2008-08-24 15:38:00’
     # +/- 60 sec
     # 100 metres 
+
+    # TODO: we have to explain, that we added the coordinates as array and created a 2dsphere index for TrackPoint
+    # this way its way faster to check for close coordinates
+    # We also have to state, that we saved the user_id in the TrackPoint table
     
 
-    db.TrackPoint.aggregate({
-        '$geoNear' : {
-          near: { type: "Point", coordinates: [ 39.97548 ,  116.33031 ] },
-          distanceField: "dist.calculated",
-          maxDistance: 100,
-          query: { category: "Parks" },
-          includeLocs: "dist.location",
-          spherical: true
+    result = list(self.db.TrackPoint.aggregate([
+      {
+        '$geoNear': {
+          'near': { 'type': 'Point', 'coordinates': [ 116.33031, 39.97548 ] },
+          'distanceField': 'dist.calculated',
+          'maxDistance': 100,
+          'includeLocs': 'dist.location',
+          'spherical': True
+        },
       },
-      '$match' : {
-        'date_time': {'$gte': ISODate('2008-08-24 15:37:00'), '$lte': ISODate('2008-08-24 15:39:00')}
-      },
-    })
-    
+      {
+        '$match': {
+          'date_time': {'$gte': datetime.strptime('2008-08-24 15:37:00', '%Y-%m-%d %H:%M:%S'), '$lte': datetime.strptime('2008-08-24 15:39:00', '%Y-%m-%d %H:%M:%S')}
+        }
+      }
+    ]))
+
+    print("TrackPoints that have been close to [ 116.33031, 39.97548 ] around 2008-08-24 15:37:00")
+    for r in result:
+      print('user_id: {}, position: {}, date_time: {}'.format(r['_user_id'], r['position'], r['date_time']))
+
+
 
     self.heading(6)
 
@@ -359,8 +371,6 @@ class AnsweringQueries:
   """
 
   def query_11(self):
-    """Elias"""
-
     result = list(self.db.Activity.aggregate([
       {'$lookup': {
         'from': 'TrackPoint',
@@ -419,6 +429,56 @@ class AnsweringQueries:
     where the timestamps deviate with at least 5 minutes. 
   """
   def query_12(self):
+    result = list(self.db.Activity.aggregate([
+      {'$lookup': {
+        'from': 'TrackPoint',
+        'localField': '_id',
+        'foreignField': '_activity_id',
+        'as': 'Activity_joined_TrackPoint'
+      }},
+      {'$project': {'_user_id': 1, 'Activity_joined_TrackPoint.date_time': 1}}, # only selects actual altitude values to be selected (saves huge amounts of bandwidth)
+      # {'$limit': 100}
+    ]))
+
+    n_invalid_activities_by_user_id = dict()
+
+    # iterate over all the activities from user_id '112'
+    for activity in result:
+      activity_is_invalid = False
+
+      table = list(activity.items())
+      # structure of table:
+      # [0]: ('_id', <value>)
+      # [1]: ('_user_id, <value>)
+      # [2]: ('Activity_joined_TrackPoint.date_time', [<all the Trackpoint records>])
+
+
+      # use first TrackPoint as start reference
+      previous_date_time = table[2][1].pop(0)['date_time']
+
+      # iterate over all the joined TrackPoint entries
+      for track_point in table[2][1]:
+        current_date_time = track_point['date_time']
+
+        time_diff = (current_date_time - previous_date_time).total_seconds()
+        previous_date_time = track_point['date_time']
+
+        if time_diff >= 300.0:
+          user_id = table[1][1]
+
+          if user_id not in n_invalid_activities_by_user_id:
+            n_invalid_activities_by_user_id[user_id] = 0
+
+          n_invalid_activities_by_user_id[user_id] += 1
+
+          # we found one invalid trackpoint -> don't need to check the other trackpoints
+          break
+        
+    print("Users with at least one invalid Activity:")
+    for user_id, n_invalid_activities in n_invalid_activities_by_user_id.items():
+      print("user_id: {}, n_invalid_activities: {}".format(user_id, n_invalid_activities))
+
+
     self.heading(12)
 
   """
