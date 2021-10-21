@@ -118,7 +118,7 @@ class AnsweringQueries:
     """
     FINISHED
     """
-    result = list(self.db.Activity.aggregate({
+    result = list(self.db.Activity.aggregate([{
       '$group': { 
         '_id': { 'a': '$_user_id', 'b': '$start_date_time', 'c': '$end_date_time' },
 
@@ -131,7 +131,7 @@ class AnsweringQueries:
           'count': { '$gt' : 1 }
         }
       }
-    ))
+    ]))
 
     self.heading(5)
 
@@ -511,18 +511,18 @@ def main():
   test = None
   try:
     queries = AnsweringQueries()
-    # queries.query_1()
-    # queries.query_2()
-    # queries.query_3()
+    queries.query_1()
+    queries.query_2()
+    queries.query_3()
     # TODO: queries.query_4() 
-    # queries.query_5()
-    # queries.query_6() 
-    # queries.query_7() 
-    # queries.query_8() 
-    # queries.query_9()
-    # queries.query_10()  
-    # queries.query_11() 
-    # queries.query_12() 
+    queries.query_5()
+    queries.query_6() 
+    queries.query_7() 
+    queries.query_8() 
+    queries.query_9()
+    queries.query_10()  
+    queries.query_11() 
+    queries.query_12() 
   except Exception as e:
       print("ERROR: Failed to use database:", e)
   finally:
