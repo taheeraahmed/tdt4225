@@ -453,7 +453,7 @@ def main():
     # queries.query_5()
     # TODO: queries.query_6() 
     # queries.query_7() 
-    # TODO: queries.query_8() 
+    # queries.query_8() 
     # TODO: queries.query_9()
     queries.query_10()  
     # TODO: queries.query_11() 
