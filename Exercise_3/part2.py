@@ -86,25 +86,27 @@ class AnsweringQueries:
   """
   def query_4(self):
 
-    # db.Activity.aggregate({'$match': {'$expr': { "$eq": [{ "$dayOfMonth": "$start_date_time" }, { "$dayOfMonth": "$end_date_time" }]}}})
+    # returns all Activities without filter but projects just three fields
+    result = list(self.db.Activity.aggregate([
+      {'$project': {'_user_id': 1, 'start_date_time': 1, 'end_date_time': 1}}
+    ]))
 
-    # db.Activity.aggregate({
-    #   '$match': {
-    #     '$expr': {
-    #       '$and': [
-    #         {'$ne': [{ "$dayOfMonth": "$start_date_time" }, { '$dayOfMonth': '$end_date_time' }]},
-    #         {'$eq': [{
-    #           '$subtract': ['$end_date_time', '$start_date_time']
-    #                 endDate: ,
-    #                 unit: 'day'
-    #           }
-    #           },
-    #           0
-    #         ]}
-    #       ]
-    #     }
-    #   }
-    # })
+    users_that_started_an_activity_in_one_day_and_ended_in_other_day = set()
+
+    for r in result:
+      increased_start_date_time = r['start_date_time'] + timedelta(days=1)
+      end_date_time = r['end_date_time']
+
+      # idea: take the start_date_time and "increment" it by one day
+      # then check if it has the same day, month and year as end_date_time
+
+      # date() returns string with year, month, day of month
+      if increased_start_date_time.date() == end_date_time.date():
+        users_that_started_an_activity_in_one_day_and_ended_in_other_day.add(r['_user_id'])
+
+    print('number of users that started and activity in one day and ended it on another day: {}'.format(
+      len(users_that_started_an_activity_in_one_day_and_ended_in_other_day)
+    ))
 
     self.heading(4)
 
