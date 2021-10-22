@@ -120,7 +120,7 @@ class AnsweringQueries:
     """
     FINISHED
     """
-    result = list(self.db.Activity.aggregate({
+    result = list(self.db.Activity.aggregate([{
       '$group': { 
         '_id': { 'a': '$_user_id', 'b': '$start_date_time', 'c': '$end_date_time' },
 
@@ -133,7 +133,7 @@ class AnsweringQueries:
           'count': { '$gt' : 1 }
         }
       }
-    ))
+    ]))
 
     self.heading(5)
 
@@ -516,7 +516,7 @@ def main():
     # queries.query_1()
     # queries.query_2()
     # queries.query_3()
-    # TODO: queries.query_4() 
+    queries.query_4() 
     # queries.query_5()
     # queries.query_6() 
     # queries.query_7() 
